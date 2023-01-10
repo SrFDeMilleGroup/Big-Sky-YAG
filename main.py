@@ -40,12 +40,70 @@ class Worker(PyQt6.QtCore.QObject):
         while self.parent.running:
             while not self.cmd_queue.empty():
                 config_type, val = self.cmd_queue.get()
-                if config_type == "flashlamp_trigger":
-                    self.yag.flashlamp.trigger = val
-                    self.update.emit({"flashlamp_trigger": self.yag.flashlamp.trigger})
-                elif config_type == "flashlamp_frequency_Hz":
-                    pass
-
+                try:
+                    if config_type == "flashlamp_trigger":
+                        self.yag.flashlamp.trigger = val
+                        self.update.emit({config_type: self.yag.flashlamp.trigger})
+                    elif config_type == "flashlamp_frequency_Hz":
+                        self.yag.flashlamp.frequency = val
+                        self.update.emit({config_type: self.yag.flashlamp.frequency})
+                    elif config_type == "flashlamp_voltage_V":
+                        self.yag.flashlamp.voltage = val
+                        self.update.emit({config_type: self.yag.flashlamp.voltage})
+                    elif config_type == "flashlamp_energy_J":
+                        self.yag.flashlamp.energy = val
+                        self.update.emit({config_type: self.yag.flashlamp.energy})
+                    elif config_type == "flashlamp_capacitance_uF":
+                        self.yag.flashlamp.capacitance = val
+                        self.update.emit({config_type: self.yag.flashlamp.capacitance})
+                    elif config_type == "qswitch_mode":
+                        self.yag.qswitch.mode = val
+                        self.update.emit({config_type: self.yag.qswitch.mode})
+                    elif config_type == "qswitch_delay_us":
+                        self.yag.qswitch.delay = val
+                        self.update.emit({config_type: self.yag.qswitch.delay})
+                    elif config_type == "qswitch_freq_divider":
+                        self.yag.qswitch.frequency_divider = val
+                        self.update.emit({config_type: self.yag.qswitch.frequency_divider})
+                    elif config_type == "qswitch_burst_pulses":
+                        self.yag.qswitch.pulses = val
+                        self.update.emit({config_type: self.yag.qswitch.pulses})
+                    elif config_type == "toggle_pump":
+                        self.yag.pump = not self.yag.pump
+                        self.update.emit({config_type: self.yag.pump})
+                    elif config_type == "toggle_shutter":
+                        self.yag.shutter = not self.yag.shutter
+                        self.update.emit({config_type: self.yag.shutter})
+                    elif config_type == "toggle_flashlamp":
+                        flashlamp_status = self.yag.laser_status.flashlamp
+                        if flashlamp_status in [0, 1]:
+                            # STOP or SINGLE
+                            self.yag.flashlamp.activate()
+                        elif flashlamp_status == 2:
+                            # START
+                            self.yag.flashlamp.stop()
+                        self.update.emit({config_type: self.yag.laser_status.flashlamp})
+                    elif config_type == "toggle_simmer":
+                        # simmer_status = self.yag.laser_status.simmer
+                        self.yag.flashlamp.simmer()
+                        self.update.emit({config_type: self.yag.laser_status.simmer})
+                    elif config_type == "falshlamp_reset_user_counter":
+                        self.yag.flashlamp.user_counter_reset()
+                        self.update.emit({config_type: self.yag.flashlamp.user_counter})
+                    elif config_type == "toggle_qswitch":
+                        if self.yag.qswitch.status:
+                            self.yag.qswitch.start()
+                        else:
+                            self.yag.qswitch.stop()
+                        self.update.emit({config_type: self.yag.qswitch.status})
+                    elif config_type == "qswitch_reset_user_counter":
+                        # self.yag.qswitch.user_counter_reset()
+                        self.update.emit({config_type: self.yag.flashlamp.user_counter})
+                    else:
+                        self.update.emit({"warning": f"Unsupported command {(config_type, val)}."})
+                except Exception as err:
+                    self.update.emit({"error": f"Ununable to read/set YAG parameters {config_type} \n {err}."})
+                
             if self.parent.running and (time.time() - t0 > self.parent.config.getfloat("setting", "loop_cycle_seconds")):
                 pass
 
@@ -177,7 +235,7 @@ class mainWindow(qt.QMainWindow):
         self.pump_status_la = qt.QLabel("N/A")
         ctrl_box.frame.addWidget(self.pump_status_la, 7, 1)
         self.toggle_pump_pb = qt.QPushButton("Toggle pump status")
-        self.toggle_pump_pb.clicked.connect(lambda config_type="pump": self.toggle_status(config_type))
+        self.toggle_pump_pb.clicked.connect(lambda config_type="toggle_pump": self.toggle_status(config_type))
         ctrl_box.frame.addWidget(self.toggle_pump_pb, 7, 2)
 
         ctrl_box.frame.addWidget(qt.QLabel("Temperature (C):"), 8, 0, alignment=PyQt6.QtCore.Qt.AlignmentFlag.AlignRight)
@@ -188,7 +246,7 @@ class mainWindow(qt.QMainWindow):
         self.shutter_status_la = qt.QLabel("N/A")
         ctrl_box.frame.addWidget(self.shutter_status_la, 9, 1)
         self.toggle_shutter_pb = qt.QPushButton("Toggle shutter status")
-        self.toggle_shutter_pb.clicked.connect(lambda config_type="shutter": self.toggle_status(config_type))
+        self.toggle_shutter_pb.clicked.connect(lambda config_type="toggle_shutter": self.toggle_status(config_type))
         ctrl_box.frame.addWidget(self.toggle_shutter_pb, 9, 2)
 
         # let column 100 grow if there are extra space (row index start from 0, default stretch is 0)
@@ -208,14 +266,14 @@ class mainWindow(qt.QMainWindow):
         self.flashlamp_status_la = qt.QLabel("N/A")
         ctrl_box.frame.addWidget(self.flashlamp_status_la, 0, 1)
         self.toggle_flashlamp_pb = qt.QPushButton("Toggle flashlamp status")
-        self.toggle_flashlamp_pb.clicked.connect(lambda config_type="flashlamp": self.toggle_status(config_type))
+        self.toggle_flashlamp_pb.clicked.connect(lambda config_type="toggle_flashlamp": self.toggle_status(config_type))
         ctrl_box.frame.addWidget(self.toggle_flashlamp_pb, 0, 2)
 
         ctrl_box.frame.addWidget(qt.QLabel("Flashlamp simmer:"), 1, 0, alignment=PyQt6.QtCore.Qt.AlignmentFlag.AlignRight)
         self.flashlamp_simmer_la = qt.QLabel("N/A")
         ctrl_box.frame.addWidget(self.flashlamp_simmer_la, 1, 1)
         self.toggle_simmer_pb = qt.QPushButton("Toggle flashlamp simmer")
-        self.toggle_simmer_pb.clicked.connect(lambda config_type="simmer": self.toggle_status(config_type))
+        self.toggle_simmer_pb.clicked.connect(lambda config_type="toggle_simmer": self.toggle_status(config_type))
         ctrl_box.frame.addWidget(self.toggle_simmer_pb, 1, 2)
 
         ctrl_box.frame.addWidget(qt.QLabel("Flashlamp trigger:"), 2, 0, alignment=PyQt6.QtCore.Qt.AlignmentFlag.AlignRight)
@@ -270,6 +328,7 @@ class mainWindow(qt.QMainWindow):
         self.flashlamp_user_counter_la = qt.QLabel("N/A")
         ctrl_box.frame.addWidget(self.flashlamp_user_counter_la, 8, 1)
         self.flashlamp_user_counter_pb = qt.QPushButton("Reset user counter")
+        self.flashlamp_user_counter_pb.clicked.connect(lambda config_type="reset_flashlamp_user_counter": self.toggle_status(config_type))
         ctrl_box.frame.addWidget(self.flashlamp_user_counter_pb, 8, 2)
  
         # let column 100 grow if there are extra space (row index start from 0, default stretch is 0)
@@ -289,10 +348,10 @@ class mainWindow(qt.QMainWindow):
         self.qswitch_status_la = qt.QLabel("N/A")
         ctrl_box.frame.addWidget(self.qswitch_status_la, 0, 1)
         self.toggle_qswitch_pb = qt.QPushButton("Toggle qswitch status")
-        self.toggle_qswitch_pb.clicked.connect(lambda config_type="qswitch": self.toggle_status(config_type))
+        self.toggle_qswitch_pb.clicked.connect(lambda config_type="toggle_qswitch": self.toggle_status(config_type))
         ctrl_box.frame.addWidget(self.toggle_qswitch_pb, 0, 2)
 
-        ctrl_box.frame.addWidget(qt.QLabel("QSwitch trigger:"), 1, 0, alignment=PyQt6.QtCore.Qt.AlignmentFlag.AlignRight)
+        ctrl_box.frame.addWidget(qt.QLabel("QSwitch mode:"), 1, 0, alignment=PyQt6.QtCore.Qt.AlignmentFlag.AlignRight)
         self.qswitch_mode_la = qt.QLabel("N/A")
         ctrl_box.frame.addWidget(self.qswitch_mode_la, 1, 1)
         self.qswitch_mode_cb = widgets.NewComboBox(item_list=["auto", "burst", "external"], current_item=self.config.get("setting", "qswitch_mode"))
@@ -335,6 +394,7 @@ class mainWindow(qt.QMainWindow):
         self.qswitch_user_counter_la = qt.QLabel("N/A")
         ctrl_box.frame.addWidget(self.qswitch_user_counter_la, 6, 1)
         self.qswitch_user_counter_pb = qt.QPushButton("Reset user counter")
+        self.qswitch_user_counter_pb.clicked.connect(lambda config_type="reset_qswitch_user_counter": self.toggle_status(config_type))
         ctrl_box.frame.addWidget(self.qswitch_user_counter_pb, 6, 2)
 
         # let column 100 grow if there are extra space (row index start from 0, default stretch is 0)
@@ -381,7 +441,12 @@ class mainWindow(qt.QMainWindow):
 
     def update_config(self, config_type, val):
         self.config["setting"][config_type] = str(val)
-        self.worker.cmd_queue.put((config_type, val))
+        if config_type == "com_port":
+            self.reconnect_com()
+        elif config_type == "loop_cycle_seconds":
+            return
+        else:
+            self.worker.cmd_queue.put((config_type, val))
 
     def toggle_status(self, config_type):
         self.worker.cmd_queue.put((config_type, "toggle"))
@@ -398,10 +463,11 @@ class mainWindow(qt.QMainWindow):
         self.com_port_cb.addItems(self.get_com_port_list())
         self.com_port_cb.setCurrentText(com)
         self.com_port_cb.blockSignals(False)
-        com = self.com_port_cb.currentText()
-        self.config["setting"]["com_port"] = com
+        com_new = self.com_port_cb.currentText()
 
-        self.reconnect_com()
+        if com_new != com:
+            self.config["setting"]["com_port"] = com
+            self.reconnect_com()
 
     def reconnect_com(self):
         pass
