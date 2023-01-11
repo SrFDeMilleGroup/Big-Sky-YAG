@@ -105,7 +105,25 @@ class Worker(PyQt6.QtCore.QObject):
                     self.update.emit({"error": f"Ununable to read/set YAG parameters {config_type} \n {err}."})
                 
             if self.parent.running and (time.time() - t0 > self.parent.config.getfloat("setting", "loop_cycle_seconds")):
-                pass
+                try:
+                    self.update.emit({"serial_number": self.yag.serial_number})
+                except Exception as err:
+                    self.update.emit({"error": f"Ununable to read YAG serial number\n {err}."})
+
+                try:
+                    self.update.emit({"pump": self.yag.pump})
+                except Exception as err:
+                    self.update.emit({"error": f"Ununable to read YAG pump status\n {err}."})
+
+                try:
+                    self.update.emit({"temperature": self.yag.temperature_cooling_group})
+                except Exception as err:
+                    self.update.emit({"error": f"Ununable to read YAG cooling group temperature\n {err}."})
+
+                try:
+                    self.update.emit({"shutter": self.yag.pump})
+                except Exception as err:
+                    self.update.emit({"error": f"Ununable to read YAG pump status\n {err}."})
 
     def open_com(self, com_port):  
         """Open a com port."""
@@ -238,7 +256,7 @@ class mainWindow(qt.QMainWindow):
         self.toggle_pump_pb.clicked.connect(lambda config_type="toggle_pump": self.toggle_status(config_type))
         ctrl_box.frame.addWidget(self.toggle_pump_pb, 7, 2)
 
-        ctrl_box.frame.addWidget(qt.QLabel("Temperature (C):"), 8, 0, alignment=PyQt6.QtCore.Qt.AlignmentFlag.AlignRight)
+        ctrl_box.frame.addWidget(qt.QLabel("Cooling group temperature (C):"), 8, 0, alignment=PyQt6.QtCore.Qt.AlignmentFlag.AlignRight)
         self.temp_la = qt.QLabel("N/A")
         ctrl_box.frame.addWidget(self.temp_la, 8, 1)
 
