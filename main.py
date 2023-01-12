@@ -44,10 +44,12 @@ class Worker(PyQt5.QtCore.QObject):
                 try:
                     if config_type == "toggle_pump":
                         self.yag.pump = not self.yag.pump
-                        self.update.emit({"type": "pump_status", "success": True, "value": self.yag.pump})
+                        self.update.emit({"type": config_type, "success": True, "value": self.yag.pump})
+
                     elif config_type == "toggle_shutter":
                         self.yag.shutter = not self.yag.shutter
-                        self.update.emit({"shutter_status": self.yag.shutter})
+                        self.update.emit({"type": "shutter_status", "success": True, "value": self.yag.shutter})
+
                     elif config_type == "toggle_flashlamp":
                         flashlamp_status = self.yag.laser_status.flashlamp
                         if flashlamp_status in [0, 1]:
@@ -56,155 +58,170 @@ class Worker(PyQt5.QtCore.QObject):
                         elif flashlamp_status == 2:
                             # START
                             self.yag.flashlamp.stop()
-                        self.update.emit({"flashlamp_status": self.yag.laser_status.flashlamp})
+                        self.update.emit({"type": "flashlamp_status", "success": True, "value": self.yag.laser_status.flashlamp})
+
                     elif config_type == "toggle_simmer":
                         # simmer_status = self.yag.laser_status.simmer
                         self.yag.flashlamp.simmer()
-                        self.update.emit({"simmer_status": self.yag.laser_status.simmer})
+                        self.update.emit({"type": "simmer_status", "success": True, "value": self.yag.laser_status.simmer})
+
                     elif config_type == "flashlamp_trigger":
                         self.yag.flashlamp.trigger = val
-                        self.update.emit({config_type: self.yag.flashlamp.trigger})
+                        self.update.emit({"type": config_type, "success": True, "value": self.yag.flashlamp.trigger})
+
                     elif config_type == "flashlamp_frequency_Hz":
                         self.yag.flashlamp.frequency = val
-                        self.update.emit({config_type: self.yag.flashlamp.frequency})
+                        self.update.emit({"type": config_type, "success": True, "value": self.yag.flashlamp.frequency})
+
                     elif config_type == "flashlamp_voltage_V":
                         self.yag.flashlamp.voltage = val
-                        self.update.emit({config_type: self.yag.flashlamp.voltage})
+                        self.update.emit({"type": config_type, "success": True, "value": self.yag.flashlamp.voltage})
+
                     elif config_type == "flashlamp_energy_J":
                         self.yag.flashlamp.energy = val
-                        self.update.emit({config_type: self.yag.flashlamp.energy})
+                        self.update.emit({"type": config_type, "success": True, "value": self.yag.flashlamp.energy})
+
                     elif config_type == "flashlamp_capacitance_uF":
                         self.yag.flashlamp.capacitance = val
-                        self.update.emit({config_type: self.yag.flashlamp.capacitance})
+                        self.update.emit({"type": config_type, "success": True, "value": self.yag.flashlamp.capacitance})
+
                     elif config_type == "falshlamp_reset_user_counter":
                         self.yag.flashlamp.user_counter_reset()
-                        self.update.emit({"flashlamp_user_counter": self.yag.flashlamp.user_counter})
+                        self.update.emit({"type": "flashlamp_user_counter", "success": True, "value": self.yag.flashlamp.user_counter})
+
                     elif config_type == "toggle_qswitch":
                         if self.yag.qswitch.status:
                             self.yag.qswitch.start()
                         else:
                             self.yag.qswitch.stop()
-                        self.update.emit({"qswitch_status": self.yag.qswitch.status})
+                        self.update.emit({"type": "qswitch_status", "success": True, "value": self.yag.qswitch.status})
+
                     elif config_type == "qswitch_mode":
                         self.yag.qswitch.mode = val
-                        self.update.emit({config_type: self.yag.qswitch.mode})
+                        self.update.emit({"type": config_type, "success": True, "value": self.yag.qswitch.mode})
+
                     elif config_type == "qswitch_delay_us":
                         self.yag.qswitch.delay = val
-                        self.update.emit({config_type: self.yag.qswitch.delay})
+                        self.update.emit({"type": config_type, "success": True, "value": self.yag.qswitch.delay})
+
                     elif config_type == "qswitch_freq_divider":
                         self.yag.qswitch.frequency_divider = val
-                        self.update.emit({config_type: self.yag.qswitch.frequency_divider})
+                        self.update.emit({"type": config_type, "success": True, "value": self.yag.qswitch.frequency_divider})
+
                     elif config_type == "qswitch_burst_pulses":
                         self.yag.qswitch.pulses = val
-                        self.update.emit({config_type: self.yag.qswitch.pulses})
+                        self.update.emit({"type": config_type, "success": True, "value": self.yag.qswitch.pulses})
+
                     elif config_type == "qswitch_reset_user_counter":
                         # self.yag.qswitch.user_counter_reset()
-                        self.update.emit({"qswitch_user_counter": self.yag.flashlamp.user_counter})
+                        self.update.emit({"type": "qswitch_user_counter", "success": True, "value": self.yag.flashlamp.user_counter})
+
                     else:
-                        self.update.emit({"error": f"Unsupported command {(config_type, val)}."})
+                        self.update.emit({"type": config_type, "success": False, "value": f"Unsupported command {(config_type, val)}."})
+
                 except Exception as err:
-                    self.update.emit({"error": f"Ununable to read/write YAG parameters {config_type} \n {err}."})
+                    self.update.emit({"type": config_type, "success": False, "value": f"Ununable to read/write YAG parameters {config_type} \n {err}."})
                 
             if self.parent.running and (time.time() - t0 > self.parent.config.getfloat("setting", "loop_cycle_seconds")):
                 try:
-                    self.update.emit({"serial_number": self.yag.serial_number})
+                    self.update.emit({"type": "serial_number", "success": True, "value": self.yag.serial_number})
                 except Exception as err:
-                    self.update.emit({"error": f"Ununable to read YAG serial number\n {err}."})
+                    self.update.emit({"type": "serial_number", "success": False, "value": f"Ununable to read YAG serial number\n {err}."})
 
                 try:
-                    self.update.emit({"pump_status": self.yag.pump})
+                    self.update.emit({"type": "pump_status", "success": True, "value": self.yag.pump})
                 except Exception as err:
-                    self.update.emit({"error": f"Ununable to read YAG pump status\n {err}."})
+                    self.update.emit({"type": "pump_status", "success": False, "value": f"Ununable to read YAG pump status\n {err}."})
 
                 try:
-                    self.update.emit({"temperature_C": self.yag.temperature_cooling_group})
+                    self.update.emit({"type": "temperature_C", "success": True, "value": self.yag.temperature_cooling_group})
                 except Exception as err:
-                    self.update.emit({"error": f"Ununable to read YAG cooling group temperature\n {err}."})
+                    self.update.emit({"type": "temperature_C", "success": False, "value": f"Ununable to read YAG cooling group temperature\n {err}."})
 
                 try:
-                    self.update.emit({"shutter_status": self.yag.shutter})
+                    self.update.emit({"type": "shutter_status", "success": True, "value": self.yag.shutter})
                 except Exception as err:
-                    self.update.emit({"error": f"Ununable to read YAG shutter status\n {err}."})
+                    self.update.emit({"type": "shutter_status", "success": False, "value": f"Ununable to read YAG shutter status\n {err}."})
 
                 try:
-                    self.update.emit({"flashlamp_status": self.yag.laser_status.flashlamp})
+                    self.update.emit({"type": "flashlamp_status", "success": True, "value": self.yag.laser_status.flashlamp})
                 except Exception as err:
-                    self.update.emit({"error": f"Ununable to read YAG flashlamp status\n {err}."})
+                    self.update.emit({"type": "flashlamp_status", "success": False, "value": f"Ununable to read YAG flashlamp status\n {err}."})
 
                 try:
-                    self.update.emit({"simmer_status": self.yag.laser_status.simmer})
+                    self.update.emit({"type": "simmer_status", "success": True, "value": self.yag.laser_status.simmer})
                 except Exception as err:
-                    self.update.emit({"error": f"Ununable to read YAG flashlamp simmer status\n {err}."})
+                    self.update.emit({"type": "simmer_status", "success": False,  "value": f"Ununable to read YAG flashlamp simmer status\n {err}."})
 
                 try:
-                    self.update.emit({"flashlamp_trigger": self.yag.flashlamp.trigger})
+                    self.update.emit({"type": "flashlamp_trigger", "success": True, "value": self.yag.flashlamp.trigger})
                 except Exception as err:
-                    self.update.emit({"error": f"Ununable to read YAG flashlamp trigger\n {err}."})
+                    self.update.emit({"type": "flashlamp_trigger", "success": False, "value": f"Ununable to read YAG flashlamp trigger\n {err}."})
 
                 try:
-                    self.update.emit({"flashlamp_frequency_Hz": self.yag.flashlamp.frequency})
+                    self.update.emit({"type": "flashlamp_frequency_Hz", "success": True, "value": self.yag.flashlamp.frequency})
                 except Exception as err:
-                    self.update.emit({"error": f"Ununable to read YAG flashlamp frequency\n {err}."})
+                    self.update.emit({"type": "flashlamp_frequency_Hz", "success": False, "value": f"Ununable to read YAG flashlamp frequency\n {err}."})
 
                 try:
-                    self.update.emit({"flashlamp_voltage_V": self.yag.flashlamp.voltage})
+                    self.update.emit({"type": "flashlamp_voltage_V", "success": True, "value": self.yag.flashlamp.voltage})
                 except Exception as err:
-                    self.update.emit({"error": f"Ununable to read YAG flashlamp voltage\n {err}."})
+                    self.update.emit({"type": "flashlamp_voltage_V", "success": False, "value": f"Ununable to read YAG flashlamp voltage\n {err}."})
 
                 try:
-                    self.update.emit({"flashlamp_energy_J": self.yag.flashlamp.energy})
+                    self.update.emit({"type": "flashlamp_energy_J", "success": True, "value": self.yag.flashlamp.energy})
                 except Exception as err:
-                    self.update.emit({"error": f"Ununable to read YAG flashlamp energy\n {err}."})
+                    self.update.emit({"type": "flashlamp_energy_J", "success": False, "value": f"Ununable to read YAG flashlamp energy\n {err}."})
 
                 try:
-                    self.update.emit({"flashlamp_capacitance_uF": self.yag.flashlamp.capacitance})
+                    self.update.emit({"type": "flashlamp_capacitance_uF", "success": True, "value": self.yag.flashlamp.capacitance})
                 except Exception as err:
-                    self.update.emit({"error": f"Ununable to read YAG flashlamp capacitance\n {err}."})
+                    self.update.emit({"type": "flashlamp_capacitance_uF", "success": False, "value": f"Ununable to read YAG flashlamp capacitance\n {err}."})
 
                 try:
-                    self.update.emit({"flashlamp_counter": self.yag.flashlamp.counter})
+                    self.update.emit({"type": "flashlamp_counter", "success": True, "value": self.yag.flashlamp.counter})
                 except Exception as err:
-                    self.update.emit({"error": f"Ununable to read YAG flashlamp counter\n {err}."})
+                    self.update.emit({"type": "flashlamp_counter", "success": False, "value": f"Ununable to read YAG flashlamp counter\n {err}."})
 
                 try:
-                    self.update.emit({"flashlamp_user_counter": self.yag.flashlamp.counter})
+                    self.update.emit({"type": "flashlamp_user_counter", "success": True, "value": self.yag.flashlamp.counter})
                 except Exception as err:
-                    self.update.emit({"error": f"Ununable to read YAG flashlamp user counter\n {err}."})
+                    self.update.emit({"type": "flashlamp_user_counter", "success": False, "value": f"Ununable to read YAG flashlamp user counter\n {err}."})
 
                 try:
-                    self.update.emit({"qswitch_status": self.yag.qswitch.status})
+                    self.update.emit({"type": "qswitch_status", "success": True, "value": self.yag.qswitch.status})
                 except Exception as err:
-                    self.update.emit({"error": f"Ununable to read YAG qswitch status\n {err}."})
+                    self.update.emit({"type": "qswitch_status", "success": False, "value": f"Ununable to read YAG qswitch status\n {err}."})
 
                 try:
-                    self.update.emit({"qswitch_mode": self.yag.qswitch.mode})
+                    self.update.emit({"type": "qswitch_mode", "success": True, "value": self.yag.qswitch.mode})
                 except Exception as err:
-                    self.update.emit({"error": f"Ununable to read YAG qswitch mode\n {err}."})
+                    self.update.emit({"type": "qswitch_mode", "success": False, "value": f"Ununable to read YAG qswitch mode\n {err}."})
 
                 try:
-                    self.update.emit({"qswitch_delay_us": self.yag.qswitch.delay})
+                    self.update.emit({"type": "qswitch_delay_us", "success": True, "value": self.yag.qswitch.delay})
                 except Exception as err:
-                    self.update.emit({"error": f"Ununable to read YAG qswitch delay\n {err}."})
+                    self.update.emit({"type": "qswitch_Delay_us", "success": False, "value": f"Ununable to read YAG qswitch delay\n {err}."})
 
                 try:
-                    self.update.emit({"qswitch_freq_divider": self.yag.qswitch.frequency_divider})
+                    self.update.emit({"type": "qswitch_freq_divider", "success": True, "value": self.yag.qswitch.frequency_divider})
                 except Exception as err:
-                    self.update.emit({"error": f"Ununable to read YAG qswitch frequency divider\n {err}."})
+                    self.update.emit({"type": "qswitch_freq_divider", "success": False, "value": f"Ununable to read YAG qswitch frequency divider\n {err}."})
 
                 try:
-                    self.update.emit({"qswitch_burst_pulses": self.yag.qswitch.pulses})
+                    self.update.emit({"type": "qswitch_burst_pulses", "success": True, "value": self.yag.qswitch.pulses})
                 except Exception as err:
-                    self.update.emit({"error": f"Ununable to read YAG qswitch burst pulse number\n {err}."})
+                    self.update.emit({"type": "qswitch_burst_pulses", "success": False, "value": f"Ununable to read YAG qswitch burst pulse number\n {err}."})
 
                 try:
-                    self.update.emit({"qswitch_counter": self.yag.qswitch.counter})
+                    self.update.emit({"type": "qswitch_counter", "success": True, "value": self.yag.qswitch.counter})
                 except Exception as err:
-                    self.update.emit({"error": f"Ununable to read YAG qswitch counter\n {err}."})
+                    self.update.emit({"type": "qswitch_counter", "success": False, "value": f"Ununable to read YAG qswitch counter\n {err}."})
 
                 try:
-                    self.update.emit({"qswitch_user_counter": self.yag.qswitch.user_counter})
+                    self.update.emit({"type": "qswitch_user_counter", "success": True, "value": self.yag.qswitch.user_counter})
                 except Exception as err:
-                    self.update.emit({"error": f"Ununable to read YAG qswitch user counter\n {err}."})
+                    self.update.emit({"type": "qswitch_user_counter", "success": False, "value": f"Ununable to read YAG qswitch user counter\n {err}."})
 
             time.sleep(0.05)
 
@@ -516,46 +533,92 @@ class mainWindow(qt.QMainWindow):
 
     @PyQt5.QtCore.pyqtSlot(tuple)
     def update_labels(self, info_dict):
-        if "serial_number" in info_dict.keys():
-            self.serial_number_la.setText(info_dict["serial_number"])
-        elif "temperature_C" in info_dict.keys():
-            self.temp_la.setText(info_dict["temperature_C"])
-        elif "pump_status" in info_dict.keys():
-            self.pump_status_la.setText(info_dict["pump_status"])
-        elif "shutter_status" in info_dict.keys():
-            self.shutter_status_la.setText(info_dict["shutter_status"])
-        elif "flashlamp_status" in info_dict.keys():
-            self.flashlamp_status_la.setText(info_dict["flashlamp_status"])
-        elif "flashlamp_trigger" in info_dict.keys():
-            self.flashlamp_trigger_la.setText(info_dict["flashlamp_trigger"])
-        elif "flashlamp_frequency_Hz" in info_dict.keys():
-            self.flashlamp_frequency_la.setText(info_dict["flashlamp_frequency_Hz"])
-        elif "flashlamp_voltage_V" in info_dict.keys():
+        if "serial_number" == info_dict["type"]:
+            if info_dict["success"]:
+                self.serial_number_la.setText(info_dict["serial_number"])
+            else:
+                self.serial_la.setStyleSheet("QLabel{background: red}")
+                self.serial_number_la.setText("Fail to read")
+
+        elif "temperature_C"  == info_dict["type"]:
+            if info_dict["success"]:
+                self.temp_la.setText(info_dict["temperature_C"])
+            else:
+                self.temp_la.setStyleSheet("QLabel{background: red}")
+                self.temp_la.setText("Fail to read")
+
+        elif "pump_status"  == info_dict["type"]:
+            if info_dict["success"]:
+                self.pump_status_la.setText(info_dict["pump_status"])
+            else:
+                self.pump_status_la.setStyleSheet("QLabel{background: red}")
+                self.pump_status_la.setText("Fail to read")
+
+        elif "shutter_status"  == info_dict["type"]:
+            if info_dict["success"]:
+                self.shutter_status_la.setText(info_dict["shutter_status"])
+            else:
+                self.shutter_status_la.setStyleSheet("QLabel{background: red}")
+                self.shutter_status_la.setText("Fail to read")
+
+        elif "flashlamp_status"  == info_dict["type"]:
+            if info_dict["success"]:
+                self.flashlamp_status_la.setText(info_dict["flashlamp_status"])
+            else:
+                self.flashlamp_status_la.setStyleSheet("QLabel{background: red}")
+                self.flashlamp_status_la.setText("Fail to read")
+
+        elif "flashlamp_trigger"  == info_dict["type"]:
+            if info_dict["success"]:
+                self.flashlamp_trigger_la.setText(info_dict["flashlamp_trigger"])
+            else:
+                self.flashlamp_trigger_la.setStyleSheet("QLabel{background: red}")
+                self.flashlamp_trigger_la.setText("Fail to read")
+
+        elif "flashlamp_frequency_Hz"  == info_dict["type"]:
+            if info_dict["success"]:
+                self.flashlamp_frequency_la.setText(info_dict["flashlamp_frequency_Hz"])
+            else:
+                self.flashlamp_frequency_la.setStyleSheet("QLabel{background: red}")
+                self.flashlamp_frequency_la.setText("Fail to read")
+
+        elif "flashlamp_voltage_V"  == info_dict["type"]:
             self.flashlamp_voltage_la.setText(info_dict["flashlamp_voltage_V"])
-        elif "flashlamp_energy_J" in info_dict.keys():
+
+        elif "flashlamp_energy_J"  == info_dict["type"]:
             self.flashlamp_energy_la.setText(info_dict["flashlamp_energy_J"])
-        elif "flashlamp_capacitance_uF" in info_dict.keys():
+
+        elif "flashlamp_capacitance_uF"  == info_dict["type"]:
             self.flashlamp_capacitance_la.setText(info_dict["flashlamp_capacitance_uF"])
-        elif "flashlamp_counter" in info_dict.keys():
+
+        elif "flashlamp_counter"  == info_dict["type"]:
             self.flashlamp_counter_la.setText(info_dict["flashlamp_counter"])
-        elif "flashlamp_user_couter" in info_dict.keys():
+
+        elif "flashlamp_user_couter"  == info_dict["type"]:
             self.flashlamp_user_counter_la.setText(info_dict["flashlamp_user_counter"])
-        elif "qswitch_status" in info_dict.keys():
+
+        elif "qswitch_status"  == info_dict["type"]:
             self.qswitch_status_la.setText(info_dict["qswitch_status"])
-        elif "qswitch_mode" in info_dict.keys():
+
+        elif "qswitch_mode"  == info_dict["type"]:
             self.qswitch_mode_la.setText(info_dict["qswitch_mode"])
-        elif "qswitch_delay_us" in info_dict.keys():
+
+        elif "qswitch_delay_us"  == info_dict["type"]:
             self.qswitch_delay_la.setText(info_dict["qswitch_delay_us"])
-        elif "qswitch_frequency_divider" in info_dict.keys():
+
+        elif "qswitch_frequency_divider"  == info_dict["type"]:
             self.qswitch_freq_divider_la.setText(info_dict["qswitch_frequency_divider"])
-        elif "qswitch_burst_pulses" in info_dict.keys():
+
+        elif "qswitch_burst_pulses"  == info_dict["type"]:
             self.qswitch_burst_pulses_la.setText(info_dict["qswitch_burst_pulses"])
-        elif "qswitch_counter" in info_dict.keys():
+
+        elif "qswitch_counter"  == info_dict["type"]:
             self.flashlamp_counter_la.setText(info_dict["qswitch_counter"])
-        elif "qswitch_user_couter" in info_dict.keys():
+
+        elif "qswitch_user_couter"  == info_dict["type"]:
             self.flashlamp_user_counter_la.setText(info_dict["qswitch_user_counter"])
         
-        elif "error" in info_dict.keys():
+        else:
             pass
 
 
