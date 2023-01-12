@@ -33,6 +33,7 @@ class Worker(PyQt5.QtCore.QObject):
             self.yag = BigSkyYag(resource_name=self.parent.config["setting"]["com_port"])
         except Exception as err:
             logging.error(f"Can't connect to BigSky YAG at COM port {self.parent.config['setting']['com_port']}.\n"+str(err))
+            self.update.emit({"error": f"Ununable to connect to BigSky YAG\n{err}."})
             self.finished.emit()
             return
 
@@ -41,7 +42,26 @@ class Worker(PyQt5.QtCore.QObject):
             while not self.cmd_queue.empty():
                 config_type, val = self.cmd_queue.get()
                 try:
-                    if config_type == "flashlamp_trigger":
+                    if config_type == "toggle_pump":
+                        self.yag.pump = not self.yag.pump
+                        self.update.emit({"pump_status": self.yag.pump})
+                    elif config_type == "toggle_shutter":
+                        self.yag.shutter = not self.yag.shutter
+                        self.update.emit({"shutter_status": self.yag.shutter})
+                    elif config_type == "toggle_flashlamp":
+                        flashlamp_status = self.yag.laser_status.flashlamp
+                        if flashlamp_status in [0, 1]:
+                            # STOP or SINGLE
+                            self.yag.flashlamp.activate()
+                        elif flashlamp_status == 2:
+                            # START
+                            self.yag.flashlamp.stop()
+                        self.update.emit({"flashlamp_status": self.yag.laser_status.flashlamp})
+                    elif config_type == "toggle_simmer":
+                        # simmer_status = self.yag.laser_status.simmer
+                        self.yag.flashlamp.simmer()
+                        self.update.emit({"simmer_status": self.yag.laser_status.simmer})
+                    elif config_type == "flashlamp_trigger":
                         self.yag.flashlamp.trigger = val
                         self.update.emit({config_type: self.yag.flashlamp.trigger})
                     elif config_type == "flashlamp_frequency_Hz":
@@ -56,6 +76,15 @@ class Worker(PyQt5.QtCore.QObject):
                     elif config_type == "flashlamp_capacitance_uF":
                         self.yag.flashlamp.capacitance = val
                         self.update.emit({config_type: self.yag.flashlamp.capacitance})
+                    elif config_type == "falshlamp_reset_user_counter":
+                        self.yag.flashlamp.user_counter_reset()
+                        self.update.emit({"flashlamp_user_counter": self.yag.flashlamp.user_counter})
+                    elif config_type == "toggle_qswitch":
+                        if self.yag.qswitch.status:
+                            self.yag.qswitch.start()
+                        else:
+                            self.yag.qswitch.stop()
+                        self.update.emit({"qswitch_status": self.yag.qswitch.status})
                     elif config_type == "qswitch_mode":
                         self.yag.qswitch.mode = val
                         self.update.emit({config_type: self.yag.qswitch.mode})
@@ -68,83 +97,118 @@ class Worker(PyQt5.QtCore.QObject):
                     elif config_type == "qswitch_burst_pulses":
                         self.yag.qswitch.pulses = val
                         self.update.emit({config_type: self.yag.qswitch.pulses})
-                    elif config_type == "toggle_pump":
-                        self.yag.pump = not self.yag.pump
-                        self.update.emit({config_type: self.yag.pump})
-                    elif config_type == "toggle_shutter":
-                        self.yag.shutter = not self.yag.shutter
-                        self.update.emit({config_type: self.yag.shutter})
-                    elif config_type == "toggle_flashlamp":
-                        flashlamp_status = self.yag.laser_status.flashlamp
-                        if flashlamp_status in [0, 1]:
-                            # STOP or SINGLE
-                            self.yag.flashlamp.activate()
-                        elif flashlamp_status == 2:
-                            # START
-                            self.yag.flashlamp.stop()
-                        self.update.emit({config_type: self.yag.laser_status.flashlamp})
-                    elif config_type == "toggle_simmer":
-                        # simmer_status = self.yag.laser_status.simmer
-                        self.yag.flashlamp.simmer()
-                        self.update.emit({config_type: self.yag.laser_status.simmer})
-                    elif config_type == "falshlamp_reset_user_counter":
-                        self.yag.flashlamp.user_counter_reset()
-                        self.update.emit({config_type: self.yag.flashlamp.user_counter})
-                    elif config_type == "toggle_qswitch":
-                        if self.yag.qswitch.status:
-                            self.yag.qswitch.start()
-                        else:
-                            self.yag.qswitch.stop()
-                        self.update.emit({config_type: self.yag.qswitch.status})
                     elif config_type == "qswitch_reset_user_counter":
                         # self.yag.qswitch.user_counter_reset()
-                        self.update.emit({config_type: self.yag.flashlamp.user_counter})
+                        self.update.emit({"qswitch_user_counter": self.yag.flashlamp.user_counter})
                     else:
-                        self.update.emit({"warning": f"Unsupported command {(config_type, val)}."})
+                        self.update.emit({"error": f"Unsupported command {(config_type, val)}."})
                 except Exception as err:
-                    self.update.emit({"error": f"Ununable to read/set YAG parameters {config_type} \n {err}."})
+                    self.update.emit({"error": f"Ununable to read/write YAG parameters {config_type} \n {err}."})
                 
             if self.parent.running and (time.time() - t0 > self.parent.config.getfloat("setting", "loop_cycle_seconds")):
-                pass
+                try:
+                    self.update.emit({"serial_number": self.yag.serial_number})
+                except Exception as err:
+                    self.update.emit({"error": f"Ununable to read YAG serial number\n {err}."})
 
-    def open_com(self, com_port):  
-        """Open a com port."""
+                try:
+                    self.update.emit({"pump_status": self.yag.pump})
+                except Exception as err:
+                    self.update.emit({"error": f"Ununable to read YAG pump status\n {err}."})
 
-        try:
-            self.instr = self.rm.open_resource(str(com_port))
-        except pyvisa.errors.VisaIOError as err:
-            logging.error(f"Can't open COM port {com_port}")
-            logging.error(traceback.format_exc())
-            self.instr = None
-            return
+                try:
+                    self.update.emit({"temperature_C": self.yag.temperature_cooling_group})
+                except Exception as err:
+                    self.update.emit({"error": f"Ununable to read YAG cooling group temperature\n {err}."})
 
-        time.sleep(0.2)
-        
-        self.instr.read_termination = "\r"
-        self.instr.write_termination = "\r"
+                try:
+                    self.update.emit({"shutter_status": self.yag.shutter})
+                except Exception as err:
+                    self.update.emit({"error": f"Ununable to read YAG shutter status\n {err}."})
 
-        self.rm.visalib.set_buffer(self.instr.session, pyvisa.constants.BufferType.io_in, 1024)
-        self.rm.visalib.set_buffer(self.instr.session, pyvisa.constants.BufferType.io_out, 1024)
-        time.sleep(0.2)
-        self.FlushTransmitBuffer()
-        time.sleep(0.2)
-        self.FlushReceiveBuffer()
-        time.sleep(0.2)
+                try:
+                    self.update.emit({"flashlamp_status": self.yag.laser_status.flashlamp})
+                except Exception as err:
+                    self.update.emit({"error": f"Ununable to read YAG flashlamp status\n {err}."})
 
-    def FlushReceiveBuffer(self):
-        # buffer operation can be found at https://pyvisa.readthedocs.io/en/latest/_modules/pyvisa/constants.html
-        # re = self.rm.visalib.flush(self.instr.session, pyvisa.constants.BufferOperation.discard_receive_buffer)
-        # print(re)
-        self.instr.flush(pyvisa.constants.BufferOperation.discard_receive_buffer)
+                try:
+                    self.update.emit({"simmer_status": self.yag.laser_status.simmer})
+                except Exception as err:
+                    self.update.emit({"error": f"Ununable to read YAG flashlamp simmer status\n {err}."})
 
-    def FlushTransmitBuffer(self):
-        # buffer operation can be found at https://pyvisa.readthedocs.io/en/latest/_modules/pyvisa/constants.html
-        # re = self.rm.visalib.flush(self.instr.session, pyvisa.constants.BufferOperation.flush_transmit_buffer)
-        # print(re)
-        self.instr.flush(pyvisa.constants.BufferOperation.discard_transmit_buffer)
+                try:
+                    self.update.emit({"flashlamp_trigger": self.yag.flashlamp.trigger})
+                except Exception as err:
+                    self.update.emit({"error": f"Ununable to read YAG flashlamp trigger\n {err}."})
 
-    def reconnect_com(self):
-        pass
+                try:
+                    self.update.emit({"flashlamp_frequency_Hz": self.yag.flashlamp.frequency})
+                except Exception as err:
+                    self.update.emit({"error": f"Ununable to read YAG flashlamp frequency\n {err}."})
+
+                try:
+                    self.update.emit({"flashlamp_voltage_V": self.yag.flashlamp.voltage})
+                except Exception as err:
+                    self.update.emit({"error": f"Ununable to read YAG flashlamp voltage\n {err}."})
+
+                try:
+                    self.update.emit({"flashlamp_energy_J": self.yag.flashlamp.energy})
+                except Exception as err:
+                    self.update.emit({"error": f"Ununable to read YAG flashlamp energy\n {err}."})
+
+                try:
+                    self.update.emit({"flashlamp_capacitance_uF": self.yag.flashlamp.capacitance})
+                except Exception as err:
+                    self.update.emit({"error": f"Ununable to read YAG flashlamp capacitance\n {err}."})
+
+                try:
+                    self.update.emit({"flashlamp_counter": self.yag.flashlamp.counter})
+                except Exception as err:
+                    self.update.emit({"error": f"Ununable to read YAG flashlamp counter\n {err}."})
+
+                try:
+                    self.update.emit({"flashlamp_user_counter": self.yag.flashlamp.counter})
+                except Exception as err:
+                    self.update.emit({"error": f"Ununable to read YAG flashlamp user counter\n {err}."})
+
+                try:
+                    self.update.emit({"qswitch_status": self.yag.qswitch.status})
+                except Exception as err:
+                    self.update.emit({"error": f"Ununable to read YAG qswitch status\n {err}."})
+
+                try:
+                    self.update.emit({"qswitch_mode": self.yag.qswitch.mode})
+                except Exception as err:
+                    self.update.emit({"error": f"Ununable to read YAG qswitch mode\n {err}."})
+
+                try:
+                    self.update.emit({"qswitch_delay_us": self.yag.qswitch.delay})
+                except Exception as err:
+                    self.update.emit({"error": f"Ununable to read YAG qswitch delay\n {err}."})
+
+                try:
+                    self.update.emit({"qswitch_freq_divider": self.yag.qswitch.frequency_divider})
+                except Exception as err:
+                    self.update.emit({"error": f"Ununable to read YAG qswitch frequency divider\n {err}."})
+
+                try:
+                    self.update.emit({"qswitch_burst_pulses": self.yag.qswitch.pulses})
+                except Exception as err:
+                    self.update.emit({"error": f"Ununable to read YAG qswitch burst pulse number\n {err}."})
+
+                try:
+                    self.update.emit({"qswitch_counter": self.yag.qswitch.counter})
+                except Exception as err:
+                    self.update.emit({"error": f"Ununable to read YAG qswitch counter\n {err}."})
+
+                try:
+                    self.update.emit({"qswitch_user_counter": self.yag.qswitch.user_counter})
+                except Exception as err:
+                    self.update.emit({"error": f"Ununable to read YAG qswitch user counter\n {err}."})
+
+            time.sleep(0.05)
+
+        self.finished.emit()
 
 
 class mainWindow(qt.QMainWindow):
@@ -235,10 +299,10 @@ class mainWindow(qt.QMainWindow):
         self.pump_status_la = qt.QLabel("N/A")
         ctrl_box.frame.addWidget(self.pump_status_la, 7, 1)
         self.toggle_pump_pb = qt.QPushButton("Toggle pump status")
-        self.toggle_pump_pb.clicked.connect(lambda config_type="toggle_pump": self.toggle_status(config_type))
+        self.toggle_pump_pb.clicked.connect(lambda config_type="toggle_pump": self.update_config(config_type))
         ctrl_box.frame.addWidget(self.toggle_pump_pb, 7, 2)
 
-        ctrl_box.frame.addWidget(qt.QLabel("Temperature (C):"), 8, 0, alignment=PyQt5.QtCore.Qt.AlignRight)
+        ctrl_box.frame.addWidget(qt.QLabel("Cooling group temperature (C):"), 8, 0, alignment=PyQt5.QtCore.Qt.AlignRight)
         self.temp_la = qt.QLabel("N/A")
         ctrl_box.frame.addWidget(self.temp_la, 8, 1)
 
@@ -246,7 +310,7 @@ class mainWindow(qt.QMainWindow):
         self.shutter_status_la = qt.QLabel("N/A")
         ctrl_box.frame.addWidget(self.shutter_status_la, 9, 1)
         self.toggle_shutter_pb = qt.QPushButton("Toggle shutter status")
-        self.toggle_shutter_pb.clicked.connect(lambda config_type="toggle_shutter": self.toggle_status(config_type))
+        self.toggle_shutter_pb.clicked.connect(lambda config_type="toggle_shutter": self.update_config(config_type))
         ctrl_box.frame.addWidget(self.toggle_shutter_pb, 9, 2)
 
         # let column 100 grow if there are extra space (row index start from 0, default stretch is 0)
@@ -266,14 +330,14 @@ class mainWindow(qt.QMainWindow):
         self.flashlamp_status_la = qt.QLabel("N/A")
         ctrl_box.frame.addWidget(self.flashlamp_status_la, 0, 1)
         self.toggle_flashlamp_pb = qt.QPushButton("Toggle flashlamp status")
-        self.toggle_flashlamp_pb.clicked.connect(lambda config_type="toggle_flashlamp": self.toggle_status(config_type))
+        self.toggle_flashlamp_pb.clicked.connect(lambda config_type="toggle_flashlamp": self.update_config(config_type))
         ctrl_box.frame.addWidget(self.toggle_flashlamp_pb, 0, 2)
 
         ctrl_box.frame.addWidget(qt.QLabel("Flashlamp simmer:"), 1, 0, alignment=PyQt5.QtCore.Qt.AlignRight)
         self.flashlamp_simmer_la = qt.QLabel("N/A")
         ctrl_box.frame.addWidget(self.flashlamp_simmer_la, 1, 1)
         self.toggle_simmer_pb = qt.QPushButton("Toggle flashlamp simmer")
-        self.toggle_simmer_pb.clicked.connect(lambda config_type="toggle_simmer": self.toggle_status(config_type))
+        self.toggle_simmer_pb.clicked.connect(lambda config_type="toggle_simmer": self.update_config(config_type))
         ctrl_box.frame.addWidget(self.toggle_simmer_pb, 1, 2)
 
         ctrl_box.frame.addWidget(qt.QLabel("Flashlamp trigger:"), 2, 0, alignment=PyQt5.QtCore.Qt.AlignRight)
@@ -328,7 +392,7 @@ class mainWindow(qt.QMainWindow):
         self.flashlamp_user_counter_la = qt.QLabel("N/A")
         ctrl_box.frame.addWidget(self.flashlamp_user_counter_la, 8, 1)
         self.flashlamp_user_counter_pb = qt.QPushButton("Reset user counter")
-        self.flashlamp_user_counter_pb.clicked.connect(lambda config_type="reset_flashlamp_user_counter": self.toggle_status(config_type))
+        self.flashlamp_user_counter_pb.clicked.connect(lambda config_type="reset_flashlamp_user_counter": self.update_config(config_type))
         ctrl_box.frame.addWidget(self.flashlamp_user_counter_pb, 8, 2)
  
         # let column 100 grow if there are extra space (row index start from 0, default stretch is 0)
@@ -348,7 +412,7 @@ class mainWindow(qt.QMainWindow):
         self.qswitch_status_la = qt.QLabel("N/A")
         ctrl_box.frame.addWidget(self.qswitch_status_la, 0, 1)
         self.toggle_qswitch_pb = qt.QPushButton("Toggle qswitch status")
-        self.toggle_qswitch_pb.clicked.connect(lambda config_type="toggle_qswitch": self.toggle_status(config_type))
+        self.toggle_qswitch_pb.clicked.connect(lambda config_type="toggle_qswitch": self.update_config(config_type))
         ctrl_box.frame.addWidget(self.toggle_qswitch_pb, 0, 2)
 
         ctrl_box.frame.addWidget(qt.QLabel("QSwitch mode:"), 1, 0, alignment=PyQt5.QtCore.Qt.AlignRight)
@@ -394,7 +458,7 @@ class mainWindow(qt.QMainWindow):
         self.qswitch_user_counter_la = qt.QLabel("N/A")
         ctrl_box.frame.addWidget(self.qswitch_user_counter_la, 6, 1)
         self.qswitch_user_counter_pb = qt.QPushButton("Reset user counter")
-        self.qswitch_user_counter_pb.clicked.connect(lambda config_type="reset_qswitch_user_counter": self.toggle_status(config_type))
+        self.qswitch_user_counter_pb.clicked.connect(lambda config_type="reset_qswitch_user_counter": self.update_config(config_type))
         ctrl_box.frame.addWidget(self.qswitch_user_counter_pb, 6, 2)
 
         # let column 100 grow if there are extra space (row index start from 0, default stretch is 0)
@@ -439,8 +503,10 @@ class mainWindow(qt.QMainWindow):
 
         self.thread.start()
 
-    def update_config(self, config_type, val):
-        self.config["setting"][config_type] = str(val)
+    def update_config(self, config_type, val=None):
+        if config_type in self.config["setting"].keys():
+            self.config["setting"][config_type] = str(val)
+
         if config_type == "com_port":
             self.reconnect_com()
         elif config_type == "loop_cycle_seconds":
@@ -448,11 +514,50 @@ class mainWindow(qt.QMainWindow):
         else:
             self.worker.cmd_queue.put((config_type, val))
 
-    def toggle_status(self, config_type):
-        self.worker.cmd_queue.put((config_type, "toggle"))
-
+    @PyQt6.QtCore.pyqtSlot(tuple)
     def update_labels(self, info_dict):
-        pass
+        if "serial_number" in info_dict.keys():
+            self.serial_number_la.setText(info_dict["serial_number"])
+        elif "temperature_C" in info_dict.keys():
+            self.temp_la.setText(info_dict["temperature_C"])
+        elif "pump_status" in info_dict.keys():
+            self.pump_status_la.setText(info_dict["pump_status"])
+        elif "shutter_status" in info_dict.keys():
+            self.shutter_status_la.setText(info_dict["shutter_status"])
+        elif "flashlamp_status" in info_dict.keys():
+            self.flashlamp_status_la.setText(info_dict["flashlamp_status"])
+        elif "flashlamp_trigger" in info_dict.keys():
+            self.flashlamp_trigger_la.setText(info_dict["flashlamp_trigger"])
+        elif "flashlamp_frequency_Hz" in info_dict.keys():
+            self.flashlamp_frequency_la.setText(info_dict["flashlamp_frequency_Hz"])
+        elif "flashlamp_voltage_V" in info_dict.keys():
+            self.flashlamp_voltage_la.setText(info_dict["flashlamp_voltage_V"])
+        elif "flashlamp_energy_J" in info_dict.keys():
+            self.flashlamp_energy_la.setText(info_dict["flashlamp_energy_J"])
+        elif "flashlamp_capacitance_uF" in info_dict.keys():
+            self.flashlamp_capacitance_la.setText(info_dict["flashlamp_capacitance_uF"])
+        elif "flashlamp_counter" in info_dict.keys():
+            self.flashlamp_counter_la.setText(info_dict["flashlamp_counter"])
+        elif "flashlamp_user_couter" in info_dict.keys():
+            self.flashlamp_user_counter_la.setText(info_dict["flashlamp_user_counter"])
+        elif "qswitch_status" in info_dict.keys():
+            self.qswitch_status_la.setText(info_dict["qswitch_status"])
+        elif "qswitch_mode" in info_dict.keys():
+            self.qswitch_mode_la.setText(info_dict["qswitch_mode"])
+        elif "qswitch_delay_us" in info_dict.keys():
+            self.qswitch_delay_la.setText(info_dict["qswitch_delay_us"])
+        elif "qswitch_frequency_divider" in info_dict.keys():
+            self.qswitch_freq_divider_la.setText(info_dict["qswitch_frequency_divider"])
+        elif "qswitch_burst_pulses" in info_dict.keys():
+            self.qswitch_burst_pulses_la.setText(info_dict["qswitch_burst_pulses"])
+        elif "qswitch_counter" in info_dict.keys():
+            self.flashlamp_counter_la.setText(info_dict["qswitch_counter"])
+        elif "qswitch_user_couter" in info_dict.keys():
+            self.flashlamp_user_counter_la.setText(info_dict["qswitch_user_counter"])
+        
+        elif "error" in info_dict.keys():
+            pass
+
 
     def refresh_com(self):
         """Get latests list of available com ports. And reconnect to YAG."""
@@ -470,7 +575,16 @@ class mainWindow(qt.QMainWindow):
             self.reconnect_com()
 
     def reconnect_com(self):
-        pass
+        self.running = False
+        try:
+            self.thread.quit()
+            self.thread.wait()
+        except RuntimeError as err:
+            pass
+        time.sleep(0.2)
+
+        self.running = True
+        self.start_control() 
 
     def get_com_port_list(self):
         """Get a list of com ports that have device connected."""
