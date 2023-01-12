@@ -6,8 +6,8 @@
 
 import re
 import numpy as np
-import PyQt6.QtGui as QtGui
-import PyQt6.QtWidgets as qt
+import PyQt5.QtGui as QtGui
+import PyQt5.QtWidgets as qt
 from widgets.NewWidgets import NewDoubleSpinBox
 
 _float_re = re.compile(r'(([+-]?\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?)')

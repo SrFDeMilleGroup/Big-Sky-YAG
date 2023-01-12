@@ -1,7 +1,7 @@
 import pyqtgraph as pg
-import PyQt6
-import PyQt6.QtGui as QtGui
-import PyQt6.QtWidgets as qt
+import PyQt5
+import PyQt5.QtGui as QtGui
+import PyQt5.QtWidgets as qt
 import logging
 import numpy as np
 
@@ -41,7 +41,7 @@ class NewDoubleSpinBox(qt.QDoubleSpinBox):
 
         # mouse hovering over this widget and scrolling the wheel won't bring focus into it
         # mouse can bring focus to this widget by clicking it
-        self.setFocusPolicy(PyQt6.QtCore.Qt.FocusPolicy.StrongFocus)
+        self.setFocusPolicy(PyQt5.QtCore.Qt.StrongFocus)
 
         # scroll event and up/down button still emit valuechanged signal,
         # but typing value through keyboard only emits valuecahnged signal when enter is pressed or focus is lost
@@ -130,7 +130,7 @@ class NewSpinBox(qt.QSpinBox):
 
         # mouse hovering over this widget and scrolling the wheel won't bring focus into it
         # mouse can bring focus to this widget by clicking it
-        self.setFocusPolicy(PyQt6.QtCore.Qt.FocusPolicy.StrongFocus)
+        self.setFocusPolicy(PyQt5.QtCore.Qt.StrongFocus)
 
         # scroll event and up/down button still emit valuechanged signal,
         # but typing value through keyboard only emits valuecahnged signal when enter is pressed or focus is lost
@@ -202,7 +202,7 @@ class NewComboBox(qt.QComboBox):
 
         # mouse hovering over this widget and scrolling the wheel won't bring focus into it
         # mouse can bring focus to this widget by clicking it
-        self.setFocusPolicy(PyQt6.QtCore.Qt.FocusPolicy.StrongFocus)
+        self.setFocusPolicy(PyQt5.QtCore.Qt.StrongFocus)
 
         if item_list != None:
             self.addItems(item_list)

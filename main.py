@@ -1,8 +1,8 @@
 import sys, os, time
 import logging, traceback
 import configparser, queue
-import PyQt6
-import PyQt6.QtWidgets as qt
+import PyQt5
+import PyQt5.QtWidgets as qt
 import numpy as np
 import qdarkstyle, pyvisa
 
@@ -15,11 +15,11 @@ def pt_to_px(pt):
     return round(pt*monitor_dpi/72)
 
 
-class Worker(PyQt6.QtCore.QObject):
+class Worker(PyQt5.QtCore.QObject):
     """A worker class that controls Hornet. This class should be run in a separate thread."""
 
-    finished = PyQt6.QtCore.pyqtSignal()
-    update = PyQt6.QtCore.pyqtSignal(dict)
+    finished = PyQt5.QtCore.pyqtSignal()
+    update = PyQt5.QtCore.pyqtSignal(dict)
 
     def __init__(self, parent):
         super().__init__()
@@ -197,8 +197,8 @@ class mainWindow(qt.QMainWindow):
         ctrl_box.setTitle("")
         ctrl_box.setStyleSheet("QGroupBox{border-width: 4px; padding-top: 18px; font-size: 15pt; font-weight: Normal}QPushButton{font: 10pt}QLabel{font: 10pt}QLineEdit{font: 10pt}QCheckBox{font: 10pt}")
 
-        ctrl_box.frame.addWidget(qt.QLabel("COM port:"), 0, 0, alignment=PyQt6.QtCore.Qt.AlignmentFlag.AlignRight)
-        # self.com_port_cb = widgets.NewComboBox(item_list=self.get_com_port_list(), current_item=self.config.get("setting", "com_port"))
+        ctrl_box.frame.addWidget(qt.QLabel("COM port:"), 0, 0, alignment=PyQt5.QtCore.Qt.AlignRight)
+        self.com_port_cb = widgets.NewComboBox(item_list=self.get_com_port_list(), current_item=self.config.get("setting", "com_port"))
         self.com_port_cb = widgets.NewComboBox(item_list=[self.config.get("setting", "com_port")], current_item=self.config.get("setting", "com_port"))
         self.com_port_cb.currentTextChanged[str].connect(lambda val, config_type="com_port": self.update_config(config_type, val))
         ctrl_box.frame.addWidget(self.com_port_cb, 0, 1)
@@ -209,40 +209,40 @@ class mainWindow(qt.QMainWindow):
         self.refresh_com_pb.clicked.connect(self.refresh_com)
         ctrl_box.frame.addWidget(self.refresh_com_pb, 1, 2)
 
-        ctrl_box.frame.addWidget(qt.QLabel("loop cycle (s):"), 2, 0, alignment=PyQt6.QtCore.Qt.AlignmentFlag.AlignRight)
+        ctrl_box.frame.addWidget(qt.QLabel("loop cycle (s):"), 2, 0, alignment=PyQt5.QtCore.Qt.AlignRight)
         self.loop_cycle_dsb = widgets.NewDoubleSpinBox(range=(0, 600), decimals=1)
         self.loop_cycle_dsb.setValue(self.config.getfloat("setting", "loop_cycle_seconds"))
         self.loop_cycle_dsb.valueChanged[float].connect(lambda val, config_type="loop_cycle_seconds": self.update_config(config_type, val))
         ctrl_box.frame.addWidget(self.loop_cycle_dsb, 2, 1)
 
-        ctrl_box.frame.addWidget(qt.QLabel("Configurations:"), 3, 0, alignment=PyQt6.QtCore.Qt.AlignmentFlag.AlignRight)
+        ctrl_box.frame.addWidget(qt.QLabel("Configurations:"), 3, 0, alignment=PyQt5.QtCore.Qt.AlignRight)
         self.save_config_pb = qt.QPushButton("Save config")
         ctrl_box.frame.addWidget(self.save_config_pb, 3, 1)
         self.load_config_pb = qt.QPushButton("Load config")
         ctrl_box.frame.addWidget(self.load_config_pb, 3, 2)
 
-        ctrl_box.frame.addWidget(qt.QLabel("Send custom command:"), 4, 0, alignment=PyQt6.QtCore.Qt.AlignmentFlag.AlignRight)
+        ctrl_box.frame.addWidget(qt.QLabel("Send custom command:"), 4, 0, alignment=PyQt5.QtCore.Qt.AlignRight)
         self.message_le = qt.QLineEdit("Enter command here...")
         ctrl_box.frame.addWidget(self.message_le, 4, 1)
 
         ctrl_box.frame.addWidget(qt.QLabel(), 5, 0)
 
-        ctrl_box.frame.addWidget(qt.QLabel("Serial number:"), 6, 0, alignment=PyQt6.QtCore.Qt.AlignmentFlag.AlignRight)
+        ctrl_box.frame.addWidget(qt.QLabel("Serial number:"), 6, 0, alignment=PyQt5.QtCore.Qt.AlignRight)
         self.serial_la = qt.QLabel("N/A")
         ctrl_box.frame.addWidget(self.serial_la, 6, 1)
 
-        ctrl_box.frame.addWidget(qt.QLabel("Pump status:"), 7, 0, alignment=PyQt6.QtCore.Qt.AlignmentFlag.AlignRight)
+        ctrl_box.frame.addWidget(qt.QLabel("Pump status:"), 7, 0, alignment=PyQt5.QtCore.Qt.AlignRight)
         self.pump_status_la = qt.QLabel("N/A")
         ctrl_box.frame.addWidget(self.pump_status_la, 7, 1)
         self.toggle_pump_pb = qt.QPushButton("Toggle pump status")
         self.toggle_pump_pb.clicked.connect(lambda config_type="toggle_pump": self.toggle_status(config_type))
         ctrl_box.frame.addWidget(self.toggle_pump_pb, 7, 2)
 
-        ctrl_box.frame.addWidget(qt.QLabel("Temperature (C):"), 8, 0, alignment=PyQt6.QtCore.Qt.AlignmentFlag.AlignRight)
+        ctrl_box.frame.addWidget(qt.QLabel("Temperature (C):"), 8, 0, alignment=PyQt5.QtCore.Qt.AlignRight)
         self.temp_la = qt.QLabel("N/A")
         ctrl_box.frame.addWidget(self.temp_la, 8, 1)
 
-        ctrl_box.frame.addWidget(qt.QLabel("Shutter status:"), 9, 0, alignment=PyQt6.QtCore.Qt.AlignmentFlag.AlignRight)
+        ctrl_box.frame.addWidget(qt.QLabel("Shutter status:"), 9, 0, alignment=PyQt5.QtCore.Qt.AlignRight)
         self.shutter_status_la = qt.QLabel("N/A")
         ctrl_box.frame.addWidget(self.shutter_status_la, 9, 1)
         self.toggle_shutter_pb = qt.QPushButton("Toggle shutter status")
@@ -262,21 +262,21 @@ class mainWindow(qt.QMainWindow):
         ctrl_box.setTitle("")
         ctrl_box.setStyleSheet("QGroupBox{border-width: 4px; padding-top: 18px; font-size: 15pt; font-weight: Normal}QPushButton{font: 10pt}QLabel{font: 10pt}QLineEdit{font: 10pt}QCheckBox{font: 10pt}")
 
-        ctrl_box.frame.addWidget(qt.QLabel("Flashlamp status:"), 0, 0, alignment=PyQt6.QtCore.Qt.AlignmentFlag.AlignRight)
+        ctrl_box.frame.addWidget(qt.QLabel("Flashlamp status:"), 0, 0, alignment=PyQt5.QtCore.Qt.AlignRight)
         self.flashlamp_status_la = qt.QLabel("N/A")
         ctrl_box.frame.addWidget(self.flashlamp_status_la, 0, 1)
         self.toggle_flashlamp_pb = qt.QPushButton("Toggle flashlamp status")
         self.toggle_flashlamp_pb.clicked.connect(lambda config_type="toggle_flashlamp": self.toggle_status(config_type))
         ctrl_box.frame.addWidget(self.toggle_flashlamp_pb, 0, 2)
 
-        ctrl_box.frame.addWidget(qt.QLabel("Flashlamp simmer:"), 1, 0, alignment=PyQt6.QtCore.Qt.AlignmentFlag.AlignRight)
+        ctrl_box.frame.addWidget(qt.QLabel("Flashlamp simmer:"), 1, 0, alignment=PyQt5.QtCore.Qt.AlignRight)
         self.flashlamp_simmer_la = qt.QLabel("N/A")
         ctrl_box.frame.addWidget(self.flashlamp_simmer_la, 1, 1)
         self.toggle_simmer_pb = qt.QPushButton("Toggle flashlamp simmer")
         self.toggle_simmer_pb.clicked.connect(lambda config_type="toggle_simmer": self.toggle_status(config_type))
         ctrl_box.frame.addWidget(self.toggle_simmer_pb, 1, 2)
 
-        ctrl_box.frame.addWidget(qt.QLabel("Flashlamp trigger:"), 2, 0, alignment=PyQt6.QtCore.Qt.AlignmentFlag.AlignRight)
+        ctrl_box.frame.addWidget(qt.QLabel("Flashlamp trigger:"), 2, 0, alignment=PyQt5.QtCore.Qt.AlignRight)
         self.flashlamp_trigger_la = qt.QLabel("N/A")
         ctrl_box.frame.addWidget(self.flashlamp_trigger_la, 2, 1)
         self.flashlamp_trigger_cb = widgets.NewComboBox(item_list=["internal", "external"], current_item=self.config.get("setting", "flashlamp_trigger"))
@@ -284,7 +284,7 @@ class mainWindow(qt.QMainWindow):
         self.flashlamp_trigger_cb.setToolTip("Choose trigger mode here.")
         ctrl_box.frame.addWidget(self.flashlamp_trigger_cb, 2, 2)
 
-        ctrl_box.frame.addWidget(qt.QLabel("Flashlamp frequency (Hz):"), 3, 0, alignment=PyQt6.QtCore.Qt.AlignmentFlag.AlignRight)
+        ctrl_box.frame.addWidget(qt.QLabel("Flashlamp frequency (Hz):"), 3, 0, alignment=PyQt5.QtCore.Qt.AlignRight)
         self.flashlamp_frequency_la = qt.QLabel("N/A")
         ctrl_box.frame.addWidget(self.flashlamp_frequency_la, 3, 1)
         self.flashlamp_frequency_dsb = widgets.NewDoubleSpinBox(range=(1, 99.99), decimals=3)
@@ -293,7 +293,7 @@ class mainWindow(qt.QMainWindow):
         self.flashlamp_frequency_dsb.setToolTip("Change flashlamp frequency here.")
         ctrl_box.frame.addWidget(self.flashlamp_frequency_dsb, 3, 2)
 
-        ctrl_box.frame.addWidget(qt.QLabel("Flashlamp voltage (V):"), 4, 0, alignment=PyQt6.QtCore.Qt.AlignmentFlag.AlignRight)
+        ctrl_box.frame.addWidget(qt.QLabel("Flashlamp voltage (V):"), 4, 0, alignment=PyQt5.QtCore.Qt.AlignRight)
         self.flashlamp_voltage_la = qt.QLabel("N/A")
         ctrl_box.frame.addWidget(self.flashlamp_voltage_la, 4, 1)
         self.flashlamp_voltage_sb = widgets.NewSpinBox(range=(500, 1800))
@@ -302,7 +302,7 @@ class mainWindow(qt.QMainWindow):
         self.flashlamp_voltage_sb.setToolTip("Change flashlamp voltage here.")
         ctrl_box.frame.addWidget(self.flashlamp_voltage_sb, 4, 2)
 
-        ctrl_box.frame.addWidget(qt.QLabel("Flashlamp energy (J):"), 5, 0, alignment=PyQt6.QtCore.Qt.AlignmentFlag.AlignRight)
+        ctrl_box.frame.addWidget(qt.QLabel("Flashlamp energy (J):"), 5, 0, alignment=PyQt5.QtCore.Qt.AlignRight)
         self.flashlamp_energy_la = qt.QLabel("N/A")
         ctrl_box.frame.addWidget(self.flashlamp_energy_la, 5, 1)
         self.flashlamp_energy_dsb = widgets.NewDoubleSpinBox(range=(7, 23), decimals=3)
@@ -311,7 +311,7 @@ class mainWindow(qt.QMainWindow):
         self.flashlamp_energy_dsb.setToolTip("Change flashlamp energy here.")
         ctrl_box.frame.addWidget(self.flashlamp_energy_dsb, 5, 2)
 
-        ctrl_box.frame.addWidget(qt.QLabel("Flashlamp capacitance (uF):"), 6, 0, alignment=PyQt6.QtCore.Qt.AlignmentFlag.AlignRight)
+        ctrl_box.frame.addWidget(qt.QLabel("Flashlamp capacitance (uF):"), 6, 0, alignment=PyQt5.QtCore.Qt.AlignRight)
         self.flashlamp_capacitance_la = qt.QLabel("N/A")
         ctrl_box.frame.addWidget(self.flashlamp_capacitance_la, 6, 1)
         self.flashlamp_capacitance_dsb = widgets.NewDoubleSpinBox(range=(27, 33), decimals=3)
@@ -320,11 +320,11 @@ class mainWindow(qt.QMainWindow):
         self.flashlamp_capacitance_dsb.setToolTip("Change flashlamp capacitance here.")
         ctrl_box.frame.addWidget(self.flashlamp_capacitance_dsb, 6, 2)
 
-        ctrl_box.frame.addWidget(qt.QLabel("Flashlamp counter:"), 7, 0, alignment=PyQt6.QtCore.Qt.AlignmentFlag.AlignRight)
+        ctrl_box.frame.addWidget(qt.QLabel("Flashlamp counter:"), 7, 0, alignment=PyQt5.QtCore.Qt.AlignRight)
         self.flashlamp_counter_la = qt.QLabel("N/A")
         ctrl_box.frame.addWidget(self.flashlamp_counter_la, 7, 1)
 
-        ctrl_box.frame.addWidget(qt.QLabel("Flashlamp user counter:"), 8, 0, alignment=PyQt6.QtCore.Qt.AlignmentFlag.AlignRight)
+        ctrl_box.frame.addWidget(qt.QLabel("Flashlamp user counter:"), 8, 0, alignment=PyQt5.QtCore.Qt.AlignRight)
         self.flashlamp_user_counter_la = qt.QLabel("N/A")
         ctrl_box.frame.addWidget(self.flashlamp_user_counter_la, 8, 1)
         self.flashlamp_user_counter_pb = qt.QPushButton("Reset user counter")
@@ -344,14 +344,14 @@ class mainWindow(qt.QMainWindow):
         ctrl_box.setTitle("")
         ctrl_box.setStyleSheet("QGroupBox{border-width: 4px; padding-top: 18px; font-size: 15pt; font-weight: Normal}QPushButton{font: 10pt}QLabel{font: 10pt}QLineEdit{font: 10pt}QCheckBox{font: 10pt}")
 
-        ctrl_box.frame.addWidget(qt.QLabel("QSwitch status:"), 0, 0, alignment=PyQt6.QtCore.Qt.AlignmentFlag.AlignRight)
+        ctrl_box.frame.addWidget(qt.QLabel("QSwitch status:"), 0, 0, alignment=PyQt5.QtCore.Qt.AlignRight)
         self.qswitch_status_la = qt.QLabel("N/A")
         ctrl_box.frame.addWidget(self.qswitch_status_la, 0, 1)
         self.toggle_qswitch_pb = qt.QPushButton("Toggle qswitch status")
         self.toggle_qswitch_pb.clicked.connect(lambda config_type="toggle_qswitch": self.toggle_status(config_type))
         ctrl_box.frame.addWidget(self.toggle_qswitch_pb, 0, 2)
 
-        ctrl_box.frame.addWidget(qt.QLabel("QSwitch mode:"), 1, 0, alignment=PyQt6.QtCore.Qt.AlignmentFlag.AlignRight)
+        ctrl_box.frame.addWidget(qt.QLabel("QSwitch mode:"), 1, 0, alignment=PyQt5.QtCore.Qt.AlignRight)
         self.qswitch_mode_la = qt.QLabel("N/A")
         ctrl_box.frame.addWidget(self.qswitch_mode_la, 1, 1)
         self.qswitch_mode_cb = widgets.NewComboBox(item_list=["auto", "burst", "external"], current_item=self.config.get("setting", "qswitch_mode"))
@@ -359,7 +359,7 @@ class mainWindow(qt.QMainWindow):
         self.qswitch_mode_cb.setToolTip("Choose trigger mode here.")
         ctrl_box.frame.addWidget(self.qswitch_mode_cb, 1, 2)
 
-        ctrl_box.frame.addWidget(qt.QLabel("QSwitch delay (us):"), 2, 0, alignment=PyQt6.QtCore.Qt.AlignmentFlag.AlignRight)
+        ctrl_box.frame.addWidget(qt.QLabel("QSwitch delay (us):"), 2, 0, alignment=PyQt5.QtCore.Qt.AlignRight)
         self.qswitch_delay_la = qt.QLabel("N/A")
         ctrl_box.frame.addWidget(self.qswitch_delay_la, 2, 1)
         self.qswitch_delay_sb = widgets.NewSpinBox(range=(10, 999))
@@ -368,7 +368,7 @@ class mainWindow(qt.QMainWindow):
         self.qswitch_delay_sb.setToolTip("Change QSwitch delay here.")
         ctrl_box.frame.addWidget(self.qswitch_delay_sb, 2, 2)
 
-        ctrl_box.frame.addWidget(qt.QLabel("QSwitch freq divider:"), 3, 0, alignment=PyQt6.QtCore.Qt.AlignmentFlag.AlignRight)
+        ctrl_box.frame.addWidget(qt.QLabel("QSwitch freq divider:"), 3, 0, alignment=PyQt5.QtCore.Qt.AlignRight)
         self.qswitch_freq_divider_la = qt.QLabel("N/A")
         ctrl_box.frame.addWidget(self.qswitch_freq_divider_la, 3, 1)
         self.qswitch_freq_divider_sb = widgets.NewSpinBox(range=(1, 99))
@@ -377,7 +377,7 @@ class mainWindow(qt.QMainWindow):
         self.qswitch_freq_divider_sb.setToolTip("Change QSwitch frequency divider here.")
         ctrl_box.frame.addWidget(self.qswitch_freq_divider_sb, 3, 2)
 
-        ctrl_box.frame.addWidget(qt.QLabel("QSwitch burst pulses:"), 4, 0, alignment=PyQt6.QtCore.Qt.AlignmentFlag.AlignRight)
+        ctrl_box.frame.addWidget(qt.QLabel("QSwitch burst pulses:"), 4, 0, alignment=PyQt5.QtCore.Qt.AlignRight)
         self.qswitch_burst_pulses_la = qt.QLabel("N/A")
         ctrl_box.frame.addWidget(self.qswitch_burst_pulses_la, 4, 1)
         self.qswitch_burst_pulses_sb = widgets.NewSpinBox(range=(1, 999))
@@ -386,11 +386,11 @@ class mainWindow(qt.QMainWindow):
         self.qswitch_burst_pulses_sb.setToolTip("Change QSwitch burst pulse number here.")
         ctrl_box.frame.addWidget(self.qswitch_burst_pulses_sb, 4, 2)
 
-        ctrl_box.frame.addWidget(qt.QLabel("QSwitch counter:"), 5, 0, alignment=PyQt6.QtCore.Qt.AlignmentFlag.AlignRight)
+        ctrl_box.frame.addWidget(qt.QLabel("QSwitch counter:"), 5, 0, alignment=PyQt5.QtCore.Qt.AlignRight)
         self.qswitch_counter_la = qt.QLabel("N/A")
         ctrl_box.frame.addWidget(self.qswitch_counter_la, 5, 1)
 
-        ctrl_box.frame.addWidget(qt.QLabel("QSwitch user counter:"), 6, 0, alignment=PyQt6.QtCore.Qt.AlignmentFlag.AlignRight)
+        ctrl_box.frame.addWidget(qt.QLabel("QSwitch user counter:"), 6, 0, alignment=PyQt5.QtCore.Qt.AlignRight)
         self.qswitch_user_counter_la = qt.QLabel("N/A")
         ctrl_box.frame.addWidget(self.qswitch_user_counter_la, 6, 1)
         self.qswitch_user_counter_pb = qt.QPushButton("Reset user counter")
@@ -425,7 +425,7 @@ class mainWindow(qt.QMainWindow):
     def start_control(self):
         """Start a worker thread. Be called when the class instantiates."""
 
-        self.thread = PyQt6.QtCore.QThread()
+        self.thread = PyQt5.QtCore.QThread()
 
         self.worker = Worker(self)
         self.worker.moveToThread(self.thread)
@@ -493,8 +493,8 @@ if __name__ == '__main__':
     # screen = app.screens()
     # monitor_dpi = screen[0].physicalDotsPerInch()
     monitor_dpi = 254
-    # palette = {"dark":qdarkstyle.dark.palette.DarkPalette, "light":qdarkstyle.light.palette.LightPalette}
-    # app.setStyleSheet(qdarkstyle._load_stylesheet(qt_api='pyqt5', palette=palette["dark"]))
+    palette = {"dark":qdarkstyle.dark.palette.DarkPalette, "light":qdarkstyle.light.palette.LightPalette}
+    app.setStyleSheet(qdarkstyle._load_stylesheet(qt_api='pyqt5', palette=palette["dark"]))
     prog = mainWindow(app)
     
     try:

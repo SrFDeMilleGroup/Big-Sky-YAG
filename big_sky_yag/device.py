@@ -34,7 +34,7 @@ class BigSkyYag:
         if self._serial_number is None:
             _query = f">{query}"
         elif isinstance(self._serial_number, int):
-            _query = f"{self._serial_number}{query}"
+            _query = f"${self._serial_number}{query}"
         else:
             raise ValueError(f"Serial number is not valid, {self._serial_number}")
         self.instrument.write(_query)
@@ -44,7 +44,7 @@ class BigSkyYag:
         if self._serial_number is None:
             _command = f">{command}"
         elif isinstance(self._serial_number, int):
-            _command = f"{self._serial_number}{command}"
+            _command = f"${self._serial_number}{command}"
         else:
             raise ValueError(f"Serial number is not valid, {self._serial_number}")
 
