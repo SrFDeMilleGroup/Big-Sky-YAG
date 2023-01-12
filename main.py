@@ -44,7 +44,7 @@ class Worker(PyQt5.QtCore.QObject):
                 try:
                     if config_type == "toggle_pump":
                         self.yag.pump = not self.yag.pump
-                        self.update.emit({"pump_status": self.yag.pump})
+                        self.update.emit({"type": "pump_status", "success": True, "value": self.yag.pump})
                     elif config_type == "toggle_shutter":
                         self.yag.shutter = not self.yag.shutter
                         self.update.emit({"shutter_status": self.yag.shutter})
@@ -514,7 +514,7 @@ class mainWindow(qt.QMainWindow):
         else:
             self.worker.cmd_queue.put((config_type, val))
 
-    @PyQt6.QtCore.pyqtSlot(tuple)
+    @PyQt5.QtCore.pyqtSlot(tuple)
     def update_labels(self, info_dict):
         if "serial_number" in info_dict.keys():
             self.serial_number_la.setText(info_dict["serial_number"])
