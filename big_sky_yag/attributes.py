@@ -331,6 +331,12 @@ class QSwitch:
         state = dict((i.name, bool(iq.get_bit(i))) for i in QSwitchInterlock)
         return QSwitchInterlockState(**state)
 
+    def user_counter_reset(self):
+        """
+        Reset the user QSwitch shot counter.
+        """
+        self.write("UCQ0")
+
     def on(self):
         self.write("QOF1")
 

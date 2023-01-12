@@ -33,7 +33,7 @@ class Worker(PyQt5.QtCore.QObject):
             self.yag = BigSkyYag(resource_name=self.parent.config["setting"]["com_port"])
         except Exception as err:
             logging.error(f"Can't connect to BigSky YAG at COM port {self.parent.config['setting']['com_port']}.\n"+str(err))
-            self.update.emit({"error": f"Ununable to connect to BigSky YAG\n{err}."})
+            self.update.emit({"type": "connect_com", "success": False, "value": f"Ununable to connect to BigSky YAG\n{err}."})
             self.finished.emit()
             return
 
@@ -44,7 +44,7 @@ class Worker(PyQt5.QtCore.QObject):
                 try:
                     if config_type == "toggle_pump":
                         self.yag.pump = not self.yag.pump
-                        self.update.emit({"type": config_type, "success": True, "value": self.yag.pump})
+                        self.update.emit({"type": "toggle_pump", "success": True, "value": self.yag.pump})
 
                     elif config_type == "toggle_shutter":
                         self.yag.shutter = not self.yag.shutter
@@ -61,7 +61,6 @@ class Worker(PyQt5.QtCore.QObject):
                         self.update.emit({"type": "flashlamp_status", "success": True, "value": self.yag.laser_status.flashlamp})
 
                     elif config_type == "toggle_simmer":
-                        # simmer_status = self.yag.laser_status.simmer
                         self.yag.flashlamp.simmer()
                         self.update.emit({"type": "simmer_status", "success": True, "value": self.yag.laser_status.simmer})
 
@@ -113,8 +112,8 @@ class Worker(PyQt5.QtCore.QObject):
                         self.update.emit({"type": config_type, "success": True, "value": self.yag.qswitch.pulses})
 
                     elif config_type == "qswitch_reset_user_counter":
-                        # self.yag.qswitch.user_counter_reset()
-                        self.update.emit({"type": "qswitch_user_counter", "success": True, "value": self.yag.flashlamp.user_counter})
+                        self.yag.qswitch.user_counter_reset()
+                        self.update.emit({"type": "qswitch_user_counter", "success": True, "value": self.yag.qswitch.user_counter})
 
                     else:
                         self.update.emit({"type": config_type, "success": False, "value": f"Unsupported command {(config_type, val)}."})
@@ -303,7 +302,8 @@ class mainWindow(qt.QMainWindow):
         ctrl_box.frame.addWidget(self.load_config_pb, 3, 2)
 
         ctrl_box.frame.addWidget(qt.QLabel("Send custom command:"), 4, 0, alignment=PyQt5.QtCore.Qt.AlignRight)
-        self.message_le = qt.QLineEdit("Enter command here...")
+        self.message_le = qt.QLineEdit("Enter cmd here...")
+        self.message_le.setCursorPosition(0)
         ctrl_box.frame.addWidget(self.message_le, 4, 1)
 
         ctrl_box.frame.addWidget(qt.QLabel(), 5, 0)
@@ -531,95 +531,167 @@ class mainWindow(qt.QMainWindow):
         else:
             self.worker.cmd_queue.put((config_type, val))
 
-    @PyQt5.QtCore.pyqtSlot(tuple)
+    # @PyQt5.QtCore.pyqtSlot(dict)
     def update_labels(self, info_dict):
-        if "serial_number" == info_dict["type"]:
+        # print(info_dict)
+
+        if info_dict["type"] == "connect_com":
+            pass
+
+        elif info_dict["type"] == "serial_number":
             if info_dict["success"]:
+                self.serial_la.setStyleSheet("QLabel{background: transparent}")
                 self.serial_number_la.setText(info_dict["serial_number"])
             else:
                 self.serial_la.setStyleSheet("QLabel{background: red}")
                 self.serial_number_la.setText("Fail to read")
 
-        elif "temperature_C"  == info_dict["type"]:
+        elif info_dict["type"] == "temperature_C":
             if info_dict["success"]:
+                self.temp_la.setStyleSheet("QLabel{background: transparent}")
                 self.temp_la.setText(info_dict["temperature_C"])
             else:
                 self.temp_la.setStyleSheet("QLabel{background: red}")
                 self.temp_la.setText("Fail to read")
 
-        elif "pump_status"  == info_dict["type"]:
+        elif info_dict["type"] == "pump_status":
             if info_dict["success"]:
+                self.pump_la.setStyleSheet("QLabel{background: green}")
                 self.pump_status_la.setText(info_dict["pump_status"])
             else:
                 self.pump_status_la.setStyleSheet("QLabel{background: red}")
                 self.pump_status_la.setText("Fail to read")
 
-        elif "shutter_status"  == info_dict["type"]:
+        elif info_dict["type"] == "shutter_status":
             if info_dict["success"]:
+                self.shutter_la.setStyleSheet("QLabel{background: green}")
                 self.shutter_status_la.setText(info_dict["shutter_status"])
             else:
                 self.shutter_status_la.setStyleSheet("QLabel{background: red}")
                 self.shutter_status_la.setText("Fail to read")
 
-        elif "flashlamp_status"  == info_dict["type"]:
+        elif info_dict["type"] == "flashlamp_status":
             if info_dict["success"]:
+                self.flashlamp_status_la.setStyleSheet("QLabel{background: green}")
                 self.flashlamp_status_la.setText(info_dict["flashlamp_status"])
             else:
                 self.flashlamp_status_la.setStyleSheet("QLabel{background: red}")
                 self.flashlamp_status_la.setText("Fail to read")
 
-        elif "flashlamp_trigger"  == info_dict["type"]:
+        elif info_dict["type"] == "flashlamp_trigger":
             if info_dict["success"]:
+                self.flashlamp_trigger_la.setStyleSheet("QLabel{background: transparent}")
                 self.flashlamp_trigger_la.setText(info_dict["flashlamp_trigger"])
             else:
                 self.flashlamp_trigger_la.setStyleSheet("QLabel{background: red}")
                 self.flashlamp_trigger_la.setText("Fail to read")
 
-        elif "flashlamp_frequency_Hz"  == info_dict["type"]:
+        elif info_dict["type"] == "flashlamp_frequency_Hz":
             if info_dict["success"]:
+                self.flashlamp_frequency_la.setStyleSheet("QLabel{background: transparent}")
                 self.flashlamp_frequency_la.setText(info_dict["flashlamp_frequency_Hz"])
             else:
                 self.flashlamp_frequency_la.setStyleSheet("QLabel{background: red}")
                 self.flashlamp_frequency_la.setText("Fail to read")
 
-        elif "flashlamp_voltage_V"  == info_dict["type"]:
-            self.flashlamp_voltage_la.setText(info_dict["flashlamp_voltage_V"])
+        elif info_dict["type"] == "flashlamp_voltage_V":
+            if info_dict["success"]:
+                self.flashlamp_voltage_la.setStyleSheet("QLabel{background: transparent}")
+                self.flashlamp_voltage_la.setText(info_dict["flashlamp_voltage_V"])
+            else:
+                self.flashlamp_voltage_la.setStyleSheet("QLabel{background: red}")
+                self.flashlamp_voltage_la.setText("Fail to read")
 
-        elif "flashlamp_energy_J"  == info_dict["type"]:
-            self.flashlamp_energy_la.setText(info_dict["flashlamp_energy_J"])
+        elif info_dict["type"] == "flashlamp_energy_J":
+            if info_dict["success"]:
+                self.flashlamp_energy_la.setStyleSheet("QLabel{background: transparent}")
+                self.flashlamp_energy_la.setText(info_dict["flashlamp_energy_J"])
+            else:
+                self.flashlamp_energy_la.setStyleSheet("QLabel{background: red}")
+                self.flashlamp_energy_la.setText("Fail to read")
 
-        elif "flashlamp_capacitance_uF"  == info_dict["type"]:
-            self.flashlamp_capacitance_la.setText(info_dict["flashlamp_capacitance_uF"])
+        elif info_dict["type"] == "flashlamp_capacitance_uF":
+            if info_dict["success"]:
+                self.flashlamp_capacitance_la.setStyleSheet("QLabel{background: transparent}")
+                self.flashlamp_capacitance_la.setText(info_dict["flashlamp_capacitance_uF"])
+            else:
+                self.flashlamp_capacitance_la.setStyleSheet("QLabel{background: red}")
+                self.flashlamp_capacitance_la.setText("Fail to read")
 
-        elif "flashlamp_counter"  == info_dict["type"]:
-            self.flashlamp_counter_la.setText(info_dict["flashlamp_counter"])
+        elif info_dict["type"] == "flashlamp_counter":
+            if info_dict["success"]:
+                self.flashlamp_counter_la.setStyleSheet("QLabel{background: transparent}")
+                self.flashlamp_counter_la.setText(info_dict["flashlamp_counter"])
+            else:
+                self.flashlamp_counter_la.setStyleSheet("QLabel{background: red}")
+                self.flashlamp_counter_la.setText("Fail to read")
 
-        elif "flashlamp_user_couter"  == info_dict["type"]:
-            self.flashlamp_user_counter_la.setText(info_dict["flashlamp_user_counter"])
+        elif info_dict["type"] == "flashlamp_user_couter":
+            if info_dict["success"]:
+                self.flashlamp_user_counter_la.setStyleSheet("QLabel{background: transparent}")
+                self.flashlamp_user_counter_la.setText(info_dict["flashlamp_user_counter"])
+            else:
+                self.flashlamp_user_counter_la.setStyleSheet("QLabel{background: red}")
+                self.flashlamp_user_counter_la.setText("Fail to read")
 
-        elif "qswitch_status"  == info_dict["type"]:
-            self.qswitch_status_la.setText(info_dict["qswitch_status"])
+        elif info_dict["type"] == "qswitch_status":
+            if info_dict["success"]:
+                self.qswitch_status_la.setStyleSheet("QLabel{background: green}")
+                self.qswitch_status_la.setText(info_dict["qswitch_status"])
+            else:
+                self.qswitch_status_la.setStyleSheet("QLabel{background: red}")
+                self.qswitch_status_la.setText("Fail to read")
 
-        elif "qswitch_mode"  == info_dict["type"]:
-            self.qswitch_mode_la.setText(info_dict["qswitch_mode"])
+        elif info_dict["type"] == "qswitch_mode":
+            if info_dict["success"]:
+                self.qswitch_mode_la.setStyleSheet("QLabel{background: transparent}")
+                self.qswitch_mode_la.setText(info_dict["qswitch_mode"])
+            else:
+                self.qswitch_mode_la.setStyleSheet("QLabel{background: red}")
+                self.qswitch_mode_la.setText("Fail to read")
 
-        elif "qswitch_delay_us"  == info_dict["type"]:
-            self.qswitch_delay_la.setText(info_dict["qswitch_delay_us"])
+        elif info_dict["type"] == "qswitch_delay_us":
+            if info_dict["success"]:
+                self.qswitch_delay_la.setStyleSheet("QLabel{background: transparent}")
+                self.qswitch_delay_la.setText(info_dict["qswitch_delay_us"])
+            else:
+                self.qswitch_delay_la.setStyleSheet("QLabel{background: red}")
+                self.qswitch_delay_la.setText("Fail to read")
 
-        elif "qswitch_frequency_divider"  == info_dict["type"]:
-            self.qswitch_freq_divider_la.setText(info_dict["qswitch_frequency_divider"])
+        elif info_dict["type"] == "qswitch_frequency_divider":
+            if info_dict["success"]:
+                self.qswitch_freq_divider_la.setStyleSheet("QLabel{background: transparent}")
+                self.qswitch_freq_divider_la.setText(info_dict["qswitch_frequency_divider"])
+            else:
+                self.qswitch_freq_divider_la.setStyleSheet("QLabel{background: red}")
+                self.qswitch_freq_dovoder_la.setText("Fail to read")
 
-        elif "qswitch_burst_pulses"  == info_dict["type"]:
-            self.qswitch_burst_pulses_la.setText(info_dict["qswitch_burst_pulses"])
+        elif info_dict["type"] == "qswitch_burst_pulses":
+            if info_dict["success"]:
+                self.qswitch_burst_pulses_la.setStyleSheet("QLabel{background: transparent}")
+                self.qswitch_burst_pulses_la.setText(info_dict["qswitch_burst_pulses"])
+            else:
+                self.qswitch_burst_pulses_la.setStyleSheet("QLabel{background: red}")
+                self.qswitch_burst_pulses_la.setText("Fail to read")
 
-        elif "qswitch_counter"  == info_dict["type"]:
-            self.flashlamp_counter_la.setText(info_dict["qswitch_counter"])
+        elif info_dict["type"] == "qswitch_counter":
+            if info_dict["success"]:
+                self.qswitch_counter_la.setStyleSheet("QLabel{background: transparent}")
+                self.qswitch_counter_la.setText(info_dict["qswitch_counter"])
+            else:
+                self.qswitch_counter_la.setStyleSheet("QLabel{background: red}")
+                self.qswitch_counter_la.setText("Fail to read")
 
-        elif "qswitch_user_couter"  == info_dict["type"]:
-            self.flashlamp_user_counter_la.setText(info_dict["qswitch_user_counter"])
+        elif info_dict["type"] == "qswitch_user_couter":
+            if info_dict["success"]:
+                self.qswitch_user_counter_la.setStyleSheet("QLabel{background: transparent}")
+                self.qswitch_user_counter_la.setText(info_dict["qswitch_user_counter"])
+            else:
+                self.qswitch_user_counter_la.setStyleSheet("QLabel{background: red}")
+                self.qswitch_user_counter_la.setText("Fail to read")
         
         else:
-            pass
+            logging.error(f"Unrecognized command: {info_dict['type']}, {info_dict['success']}, {info_dict['value']}")
 
 
     def refresh_com(self):
@@ -669,9 +741,9 @@ if __name__ == '__main__':
     app = qt.QApplication(sys.argv)
     # screen = app.screens()
     # monitor_dpi = screen[0].physicalDotsPerInch()
-    monitor_dpi = 254
-    palette = {"dark":qdarkstyle.dark.palette.DarkPalette, "light":qdarkstyle.light.palette.LightPalette}
-    app.setStyleSheet(qdarkstyle._load_stylesheet(qt_api='pyqt5', palette=palette["dark"]))
+    monitor_dpi = 72
+    # palette = {"dark":qdarkstyle.dark.palette.DarkPalette, "light":qdarkstyle.light.palette.LightPalette}
+    # app.setStyleSheet(qdarkstyle._load_stylesheet(qt_api='pyqt5', palette=palette["dark"]))
     prog = mainWindow(app)
     
     try:
