@@ -19,7 +19,7 @@ yag.flashlamp.frequency = 10 # Hz
 yag.flashlamp.voltage = 900 # V
 
 # set the q-switch delay
-yag.qswitch.delay = 150 # ns
+yag.qswitch.delay = 150 # us
 
 # start the water pump
 yag.pump = True

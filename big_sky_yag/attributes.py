@@ -274,7 +274,7 @@ class QSwitch:
     counter = IntProperty(
         name="shot counter", command="CQ", ret_string="ct QS ---------"
     )
-    counter_user = IntProperty(
+    user_counter = IntProperty(
         name="user shot counter", command="UCQ", ret_string="cu QS ---------"
     )
     delay = IntProperty(
@@ -321,7 +321,13 @@ class QSwitch:
     def status(self) -> bool:
         status = self.query("QOF")
         status = status.strip("QS at run").replace(" ", "")
-        return bool(status)
+        if status == "1":
+            return True
+        elif status == "0":
+            return False 
+        else:
+            raise ValueError(f"Unrecognized qswitch status {status}")
+            # return bool(int(status)) # string '0' make it return True, while int 0 makes it False
 
     @property
     def interlock(self) -> QSwitchInterlockState:
@@ -330,6 +336,12 @@ class QSwitch:
         iq = Bits(int(interlock_str, 2))
         state = dict((i.name, bool(iq.get_bit(i))) for i in QSwitchInterlock)
         return QSwitchInterlockState(**state)
+
+    def user_counter_reset(self):
+        """
+        Reset the user QSwitch shot counter.
+        """
+        self.write("UCQ0")
 
     def on(self):
         self.write("QOF1")

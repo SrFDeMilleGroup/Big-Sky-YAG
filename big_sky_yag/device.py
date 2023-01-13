@@ -1,13 +1,13 @@
 from typing import Any, List, Optional
 import pyvisa
 
-from .attributes import Flashlamp, LaserStatus, QSwitch, Status, Trigger, FloatProperty
+from .attributes import Flashlamp, LaserStatus, QSwitch, Status, Trigger, FloatProperty, IntProperty
 
 __all__ = ["BigSkyYag"]
 
 
 class BigSkyYag:
-    temperature_cooling_group = FloatProperty(
+    temperature_cooling_group = IntProperty(
         name="temperature cooling group in C",
         command="CG",
         ret_string="temp. CG -- d  ",
@@ -34,7 +34,7 @@ class BigSkyYag:
         if self._serial_number is None:
             _query = f">{query}"
         elif isinstance(self._serial_number, int):
-            _query = f"{self._serial_number}{query}"
+            _query = f"${self._serial_number}{query}"
         else:
             raise ValueError(f"Serial number is not valid, {self._serial_number}")
         self.instrument.write(_query)
@@ -44,7 +44,7 @@ class BigSkyYag:
         if self._serial_number is None:
             _command = f">{command}"
         elif isinstance(self._serial_number, int):
-            _command = f"{self._serial_number}{command}"
+            _command = f"${self._serial_number}{command}"
         else:
             raise ValueError(f"Serial number is not valid, {self._serial_number}")
 
@@ -77,7 +77,7 @@ class BigSkyYag:
         """
         shutter = self.query("R")
         shutter = shutter.strip("shutter ")
-        return True if shutter == "open" else False
+        return True if shutter == "opened" else False
 
     @shutter.setter
     def shutter(self, state: bool):
@@ -142,3 +142,10 @@ class BigSkyYag:
         args.append(Trigger.INTERNAL if status_ints[3] <= 3 else Trigger.EXTERNAL)
 
         return LaserStatus(*args)
+
+    def close_com(self):
+        try:
+            self.instrument.clear()
+            self.instrument.close()
+        except AttributeError as err:
+            pass
