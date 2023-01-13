@@ -1,0 +1,4 @@
+
+2023/01/13 14:37:08: This program controls Big Sky/Quantel YAG Laser.
+2023/01/13 14:37:08: Starting GUI...
+2023/01/13 14:37:08: Connected to ASRL3::INSTR.

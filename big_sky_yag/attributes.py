@@ -321,7 +321,13 @@ class QSwitch:
     def status(self) -> bool:
         status = self.query("QOF")
         status = status.strip("QS at run").replace(" ", "")
-        return bool(status)
+        if status == "1":
+            return True
+        elif status == "0":
+            return False 
+        else:
+            raise ValueError(f"Unrecognized qswitch status {status}")
+            # return bool(int(status)) # string '0' make it return True, while int 0 makes it False
 
     @property
     def interlock(self) -> QSwitchInterlockState:

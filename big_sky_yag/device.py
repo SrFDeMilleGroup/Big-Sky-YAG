@@ -77,7 +77,7 @@ class BigSkyYag:
         """
         shutter = self.query("R")
         shutter = shutter.strip("shutter ")
-        return True if shutter == "open" else False
+        return True if shutter == "opened" else False
 
     @shutter.setter
     def shutter(self, state: bool):
