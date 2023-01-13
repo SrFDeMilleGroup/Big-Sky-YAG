@@ -220,6 +220,20 @@ class NewComboBox(qt.QComboBox):
         else:
             event.ignore()
 
+class NewLineEdit(qt.QLineEdit):
+    getfocus = PyQt5.QtCore.pyqtSignal()
+
+    def __init__(self, label=None):
+        super().__init__(label)
+        self.editingFinished.connect(self.clearFocus)
+
+    def focusInEvent(self, event):
+        super().focusInEvent(event)
+        # directly call selectAll doesn't work, because a mousepressevent is triggered right after this, and it cancels selection
+        # https://stackoverflow.com/questions/35653331/qlineedit-selectall-doesnt-work
+        PyQt5.QtCore.QTimer.singleShot(0, self.selectAll)
+        self.getfocus.emit()
+
 class NewPlot(pg.PlotWidget):
     """A formated plot widget"""
 

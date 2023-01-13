@@ -1,13 +1,13 @@
 from typing import Any, List, Optional
 import pyvisa
 
-from .attributes import Flashlamp, LaserStatus, QSwitch, Status, Trigger, FloatProperty
+from .attributes import Flashlamp, LaserStatus, QSwitch, Status, Trigger, FloatProperty, IntProperty
 
 __all__ = ["BigSkyYag"]
 
 
 class BigSkyYag:
-    temperature_cooling_group = FloatProperty(
+    temperature_cooling_group = IntProperty(
         name="temperature cooling group in C",
         command="CG",
         ret_string="temp. CG -- d  ",
@@ -142,3 +142,10 @@ class BigSkyYag:
         args.append(Trigger.INTERNAL if status_ints[3] <= 3 else Trigger.EXTERNAL)
 
         return LaserStatus(*args)
+
+    def close_com(self):
+        try:
+            self.instrument.clear()
+            self.instrument.close()
+        except AttributeError as err:
+            pass

@@ -1,6 +1,7 @@
 import sys, os, time
 import logging, traceback
 import configparser, queue
+from collections import deque
 import PyQt5
 import PyQt5.QtWidgets as qt
 import numpy as np
@@ -20,6 +21,7 @@ class Worker(PyQt5.QtCore.QObject):
 
     finished = PyQt5.QtCore.pyqtSignal()
     update = PyQt5.QtCore.pyqtSignal(dict)
+    update_event_log = PyQt5.QtCore.pyqtSignal(str)
 
     def __init__(self, parent):
         super().__init__()
@@ -30,10 +32,12 @@ class Worker(PyQt5.QtCore.QObject):
         """Repeatedly read from the device."""
 
         try:
+            self.update_event_log.emit(f'Connecting to {self.parent.config["setting"]["com_port"]}...')
             self.yag = BigSkyYag(resource_name=self.parent.config["setting"]["com_port"])
+            self.update_event_log.emit(f'Connected to {self.parent.config["setting"]["com_port"]}.')
         except Exception as err:
-            logging.error(f"Can't connect to BigSky YAG at COM port {self.parent.config['setting']['com_port']}.\n"+str(err))
-            self.update.emit({"type": "connect_com", "success": False, "value": f"Ununable to connect to BigSky YAG\n{err}."})
+            self.update_event_log.emit(f"Can't connect to Big Sky YAG at COM port {self.parent.config['setting']['com_port']}.\n"+str(err))
+            # self.update.emit({"type": "connect_com", "success": False, "value": f"Ununable to connect to BigSky YAG\n{err}."})
             self.finished.emit()
             return
 
@@ -52,12 +56,10 @@ class Worker(PyQt5.QtCore.QObject):
 
                     elif config_type == "toggle_flashlamp":
                         flashlamp_status = self.yag.laser_status.flashlamp
-                        if flashlamp_status in [0, 1]:
-                            # STOP or SINGLE
-                            self.yag.flashlamp.activate()
-                        elif flashlamp_status == 2:
-                            # START
+                        if flashlamp_status.name in ["START", "SINGLE"]:
                             self.yag.flashlamp.stop()
+                        elif flashlamp_status.name == "STOP":
+                            self.yag.flashlamp.activate()
                         self.update.emit({"type": "flashlamp_status", "success": True, "value": self.yag.laser_status.flashlamp})
 
                     elif config_type == "toggle_simmer":
@@ -90,9 +92,9 @@ class Worker(PyQt5.QtCore.QObject):
 
                     elif config_type == "toggle_qswitch":
                         if self.yag.qswitch.status:
-                            self.yag.qswitch.start()
-                        else:
                             self.yag.qswitch.stop()
+                        else:
+                            self.yag.qswitch.start()
                         self.update.emit({"type": "qswitch_status", "success": True, "value": self.yag.qswitch.status})
 
                     elif config_type == "qswitch_mode":
@@ -115,115 +117,183 @@ class Worker(PyQt5.QtCore.QObject):
                         self.yag.qswitch.user_counter_reset()
                         self.update.emit({"type": "qswitch_user_counter", "success": True, "value": self.yag.qswitch.user_counter})
 
+                    elif config_type == "custom_command":
+                        self.update.emit({"type": "custom_command", "success": True, "value": self.yag.write(val)})
+
                     else:
                         self.update.emit({"type": config_type, "success": False, "value": f"Unsupported command {(config_type, val)}."})
 
                 except Exception as err:
-                    self.update.emit({"type": config_type, "success": False, "value": f"Ununable to read/write YAG parameters {config_type} \n {err}."})
+                    try:
+                        self.update.emit({"type": config_type, "success": False, "value": f"Ununable to read/write YAG parameters {config_type} \n {err}."})
+                    except RuntimeError:
+                        # RunTime Error could be raised when COM port is disconnected and this object is deleted
+                        pass
                 
             if self.parent.running and (time.time() - t0 > self.parent.config.getfloat("setting", "loop_cycle_seconds")):
                 try:
                     self.update.emit({"type": "serial_number", "success": True, "value": self.yag.serial_number})
                 except Exception as err:
-                    self.update.emit({"type": "serial_number", "success": False, "value": f"Ununable to read YAG serial number\n {err}."})
+                    try:
+                        self.update.emit({"type": "serial_number", "success": False, "value": f"Ununable to read YAG serial number\n {err}."})
+                    except RuntimeError:
+                        pass
 
                 try:
                     self.update.emit({"type": "pump_status", "success": True, "value": self.yag.pump})
                 except Exception as err:
-                    self.update.emit({"type": "pump_status", "success": False, "value": f"Ununable to read YAG pump status\n {err}."})
+                    try:
+                        self.update.emit({"type": "pump_status", "success": False, "value": f"Ununable to read YAG pump status\n {err}."})
+                    except RuntimeError:
+                        pass
 
                 try:
                     self.update.emit({"type": "temperature_C", "success": True, "value": self.yag.temperature_cooling_group})
                 except Exception as err:
-                    self.update.emit({"type": "temperature_C", "success": False, "value": f"Ununable to read YAG cooling group temperature\n {err}."})
+                    try:
+                        self.update.emit({"type": "temperature_C", "success": False, "value": f"Ununable to read YAG cooling group temperature\n {err}."})
+                    except RuntimeError:
+                        pass
 
                 try:
                     self.update.emit({"type": "shutter_status", "success": True, "value": self.yag.shutter})
                 except Exception as err:
-                    self.update.emit({"type": "shutter_status", "success": False, "value": f"Ununable to read YAG shutter status\n {err}."})
+                    try:
+                        self.update.emit({"type": "shutter_status", "success": False, "value": f"Ununable to read YAG shutter status\n {err}."})
+                    except RuntimeError:
+                        pass
 
                 try:
                     self.update.emit({"type": "flashlamp_status", "success": True, "value": self.yag.laser_status.flashlamp})
                 except Exception as err:
-                    self.update.emit({"type": "flashlamp_status", "success": False, "value": f"Ununable to read YAG flashlamp status\n {err}."})
+                    try:
+                        self.update.emit({"type": "flashlamp_status", "success": False, "value": f"Ununable to read YAG flashlamp status\n {err}."})
+                    except RuntimeError:
+                        pass
 
                 try:
                     self.update.emit({"type": "simmer_status", "success": True, "value": self.yag.laser_status.simmer})
                 except Exception as err:
-                    self.update.emit({"type": "simmer_status", "success": False,  "value": f"Ununable to read YAG flashlamp simmer status\n {err}."})
+                    try:
+                        self.update.emit({"type": "simmer_status", "success": False,  "value": f"Ununable to read YAG flashlamp simmer status\n {err}."})
+                    except RuntimeError:
+                        pass
 
                 try:
                     self.update.emit({"type": "flashlamp_trigger", "success": True, "value": self.yag.flashlamp.trigger})
                 except Exception as err:
-                    self.update.emit({"type": "flashlamp_trigger", "success": False, "value": f"Ununable to read YAG flashlamp trigger\n {err}."})
+                    try:
+                        self.update.emit({"type": "flashlamp_trigger", "success": False, "value": f"Ununable to read YAG flashlamp trigger\n {err}."})
+                    except RuntimeError:
+                        pass
 
                 try:
                     self.update.emit({"type": "flashlamp_frequency_Hz", "success": True, "value": self.yag.flashlamp.frequency})
                 except Exception as err:
-                    self.update.emit({"type": "flashlamp_frequency_Hz", "success": False, "value": f"Ununable to read YAG flashlamp frequency\n {err}."})
+                    try:
+                        self.update.emit({"type": "flashlamp_frequency_Hz", "success": False, "value": f"Ununable to read YAG flashlamp frequency\n {err}."})
+                    except RuntimeError:
+                        pass
 
                 try:
                     self.update.emit({"type": "flashlamp_voltage_V", "success": True, "value": self.yag.flashlamp.voltage})
                 except Exception as err:
-                    self.update.emit({"type": "flashlamp_voltage_V", "success": False, "value": f"Ununable to read YAG flashlamp voltage\n {err}."})
+                    try:
+                        self.update.emit({"type": "flashlamp_voltage_V", "success": False, "value": f"Ununable to read YAG flashlamp voltage\n {err}."})
+                    except RuntimeError:
+                        pass
 
                 try:
                     self.update.emit({"type": "flashlamp_energy_J", "success": True, "value": self.yag.flashlamp.energy})
                 except Exception as err:
-                    self.update.emit({"type": "flashlamp_energy_J", "success": False, "value": f"Ununable to read YAG flashlamp energy\n {err}."})
+                    try:
+                        self.update.emit({"type": "flashlamp_energy_J", "success": False, "value": f"Ununable to read YAG flashlamp energy\n {err}."})
+                    except RuntimeError:
+                        pass
 
                 try:
                     self.update.emit({"type": "flashlamp_capacitance_uF", "success": True, "value": self.yag.flashlamp.capacitance})
                 except Exception as err:
-                    self.update.emit({"type": "flashlamp_capacitance_uF", "success": False, "value": f"Ununable to read YAG flashlamp capacitance\n {err}."})
+                    try:
+                        self.update.emit({"type": "flashlamp_capacitance_uF", "success": False, "value": f"Ununable to read YAG flashlamp capacitance\n {err}."})
+                    except RuntimeError:
+                        pass
 
                 try:
                     self.update.emit({"type": "flashlamp_counter", "success": True, "value": self.yag.flashlamp.counter})
                 except Exception as err:
-                    self.update.emit({"type": "flashlamp_counter", "success": False, "value": f"Ununable to read YAG flashlamp counter\n {err}."})
+                    try:
+                        self.update.emit({"type": "flashlamp_counter", "success": False, "value": f"Ununable to read YAG flashlamp counter\n {err}."})
+                    except RuntimeError:
+                        pass
 
                 try:
                     self.update.emit({"type": "flashlamp_user_counter", "success": True, "value": self.yag.flashlamp.counter})
                 except Exception as err:
-                    self.update.emit({"type": "flashlamp_user_counter", "success": False, "value": f"Ununable to read YAG flashlamp user counter\n {err}."})
+                    try:
+                        self.update.emit({"type": "flashlamp_user_counter", "success": False, "value": f"Ununable to read YAG flashlamp user counter\n {err}."})
+                    except RuntimeError:
+                        pass
 
                 try:
                     self.update.emit({"type": "qswitch_status", "success": True, "value": self.yag.qswitch.status})
                 except Exception as err:
-                    self.update.emit({"type": "qswitch_status", "success": False, "value": f"Ununable to read YAG qswitch status\n {err}."})
+                    try:
+                        self.update.emit({"type": "qswitch_status", "success": False, "value": f"Ununable to read YAG qswitch status\n {err}."})
+                    except RuntimeError:
+                        pass
 
                 try:
                     self.update.emit({"type": "qswitch_mode", "success": True, "value": self.yag.qswitch.mode})
                 except Exception as err:
-                    self.update.emit({"type": "qswitch_mode", "success": False, "value": f"Ununable to read YAG qswitch mode\n {err}."})
+                    try:
+                        self.update.emit({"type": "qswitch_mode", "success": False, "value": f"Ununable to read YAG qswitch mode\n {err}."})
+                    except RuntimeError:
+                        pass
 
                 try:
                     self.update.emit({"type": "qswitch_delay_us", "success": True, "value": self.yag.qswitch.delay})
                 except Exception as err:
-                    self.update.emit({"type": "qswitch_Delay_us", "success": False, "value": f"Ununable to read YAG qswitch delay\n {err}."})
+                    try:
+                        self.update.emit({"type": "qswitch_delay_us", "success": False, "value": f"Ununable to read YAG qswitch delay\n {err}."})
+                    except RuntimeError:
+                        pass
 
                 try:
                     self.update.emit({"type": "qswitch_freq_divider", "success": True, "value": self.yag.qswitch.frequency_divider})
                 except Exception as err:
-                    self.update.emit({"type": "qswitch_freq_divider", "success": False, "value": f"Ununable to read YAG qswitch frequency divider\n {err}."})
+                    try:
+                        self.update.emit({"type": "qswitch_freq_divider", "success": False, "value": f"Ununable to read YAG qswitch frequency divider\n {err}."})
+                    except RuntimeError:
+                        pass
 
                 try:
                     self.update.emit({"type": "qswitch_burst_pulses", "success": True, "value": self.yag.qswitch.pulses})
                 except Exception as err:
-                    self.update.emit({"type": "qswitch_burst_pulses", "success": False, "value": f"Ununable to read YAG qswitch burst pulse number\n {err}."})
+                    try:
+                        self.update.emit({"type": "qswitch_burst_pulses", "success": False, "value": f"Ununable to read YAG qswitch burst pulse number\n {err}."})
+                    except RuntimeError:
+                        pass
 
                 try:
                     self.update.emit({"type": "qswitch_counter", "success": True, "value": self.yag.qswitch.counter})
                 except Exception as err:
-                    self.update.emit({"type": "qswitch_counter", "success": False, "value": f"Ununable to read YAG qswitch counter\n {err}."})
+                    try:
+                        self.update.emit({"type": "qswitch_counter", "success": False, "value": f"Ununable to read YAG qswitch counter\n {err}."})
+                    except RuntimeError:
+                        pass
 
                 try:
                     self.update.emit({"type": "qswitch_user_counter", "success": True, "value": self.yag.qswitch.user_counter})
                 except Exception as err:
-                    self.update.emit({"type": "qswitch_user_counter", "success": False, "value": f"Ununable to read YAG qswitch user counter\n {err}."})
+                    try:
+                        self.update.emit({"type": "qswitch_user_counter", "success": False, "value": f"Ununable to read YAG qswitch user counter\n {err}."})
+                    except RuntimeError:
+                        pass
 
             time.sleep(0.05)
 
+        self.yag.close_com()
         self.finished.emit()
 
 
@@ -234,7 +304,8 @@ class mainWindow(qt.QMainWindow):
         super().__init__()
         self.app = app
         self.running = True
-        logging.getLogger().setLevel("WARNING")
+        self.event_log_deque = deque(maxlen=10000)
+        logging.getLogger().setLevel("INFO")
 
         self.config = configparser.ConfigParser()
         self.config.optionxform = str
@@ -267,6 +338,9 @@ class mainWindow(qt.QMainWindow):
         self.box.frame.addWidget(event_log_box, 1, 0)
 
         self.show()
+
+        self.update_event_log("This program controls Big Sky/Quantel YAG Laser.")
+        self.update_event_log("Starting GUI...")
 
         self.start_control()
 
@@ -302,15 +376,16 @@ class mainWindow(qt.QMainWindow):
         ctrl_box.frame.addWidget(self.load_config_pb, 3, 2)
 
         ctrl_box.frame.addWidget(qt.QLabel("Send custom command:"), 4, 0, alignment=PyQt5.QtCore.Qt.AlignRight)
-        self.message_le = qt.QLineEdit("Enter cmd here...")
+        self.message_le = widgets.NewLineEdit("Enter cmd here...")
+        self.message_le.returnPressed.connect(lambda le=self.message_le, config_type="custom_command": self.update_config(config_type, le.text()))
         self.message_le.setCursorPosition(0)
         ctrl_box.frame.addWidget(self.message_le, 4, 1)
 
-        ctrl_box.frame.addWidget(qt.QLabel(), 5, 0)
+        ctrl_box.frame.addWidget(qt.QLabel("--------------------------"), 5, 0, alignment=PyQt5.QtCore.Qt.AlignRight)
 
         ctrl_box.frame.addWidget(qt.QLabel("Serial number:"), 6, 0, alignment=PyQt5.QtCore.Qt.AlignRight)
-        self.serial_la = qt.QLabel("N/A")
-        ctrl_box.frame.addWidget(self.serial_la, 6, 1)
+        self.serial_number_la = qt.QLabel("N/A")
+        ctrl_box.frame.addWidget(self.serial_number_la, 6, 1)
 
         ctrl_box.frame.addWidget(qt.QLabel("Pump status:"), 7, 0, alignment=PyQt5.QtCore.Qt.AlignRight)
         self.pump_status_la = qt.QLabel("N/A")
@@ -368,7 +443,7 @@ class mainWindow(qt.QMainWindow):
         ctrl_box.frame.addWidget(qt.QLabel("Flashlamp frequency (Hz):"), 3, 0, alignment=PyQt5.QtCore.Qt.AlignRight)
         self.flashlamp_frequency_la = qt.QLabel("N/A")
         ctrl_box.frame.addWidget(self.flashlamp_frequency_la, 3, 1)
-        self.flashlamp_frequency_dsb = widgets.NewDoubleSpinBox(range=(1, 99.99), decimals=3)
+        self.flashlamp_frequency_dsb = widgets.NewDoubleSpinBox(range=(1, 99.99), decimals=2)
         self.flashlamp_frequency_dsb.setValue(self.config.getfloat("setting", "flashlamp_frequency_Hz"))
         self.flashlamp_frequency_dsb.valueChanged[float].connect(lambda val, config_type="flashlamp_frequency_Hz": self.update_config(config_type, val))
         self.flashlamp_frequency_dsb.setToolTip("Change flashlamp frequency here.")
@@ -386,7 +461,7 @@ class mainWindow(qt.QMainWindow):
         ctrl_box.frame.addWidget(qt.QLabel("Flashlamp energy (J):"), 5, 0, alignment=PyQt5.QtCore.Qt.AlignRight)
         self.flashlamp_energy_la = qt.QLabel("N/A")
         ctrl_box.frame.addWidget(self.flashlamp_energy_la, 5, 1)
-        self.flashlamp_energy_dsb = widgets.NewDoubleSpinBox(range=(7, 23), decimals=3)
+        self.flashlamp_energy_dsb = widgets.NewDoubleSpinBox(range=(7, 23), decimals=1)
         self.flashlamp_energy_dsb.setValue(self.config.getfloat("setting", "flashlamp_energy_J"))
         self.flashlamp_energy_dsb.valueChanged[float].connect(lambda val, config_type="flashlamp_energy_J": self.update_config(config_type, val))
         self.flashlamp_energy_dsb.setToolTip("Change flashlamp energy here.")
@@ -395,7 +470,7 @@ class mainWindow(qt.QMainWindow):
         ctrl_box.frame.addWidget(qt.QLabel("Flashlamp capacitance (uF):"), 6, 0, alignment=PyQt5.QtCore.Qt.AlignRight)
         self.flashlamp_capacitance_la = qt.QLabel("N/A")
         ctrl_box.frame.addWidget(self.flashlamp_capacitance_la, 6, 1)
-        self.flashlamp_capacitance_dsb = widgets.NewDoubleSpinBox(range=(27, 33), decimals=3)
+        self.flashlamp_capacitance_dsb = widgets.NewDoubleSpinBox(range=(27, 33), decimals=1)
         self.flashlamp_capacitance_dsb.setValue(self.config.getfloat("setting", "flashlamp_capacitance_uF"))
         self.flashlamp_capacitance_dsb.valueChanged[float].connect(lambda val, config_type="flashlamp_capacitance_uF": self.update_config(config_type, val))
         self.flashlamp_capacitance_dsb.setToolTip("Change flashlamp capacitance here.")
@@ -491,7 +566,7 @@ class mainWindow(qt.QMainWindow):
 
         event_log_box = widgets.NewBox("grid")
         event_log_box.setTitle("Event Log")
-        event_log_box.setStyleSheet("QGroupBox{border-width: 4px; padding-top: 18px; font-size: 15pt; font-weight: Normal}QPushButton{font: 10pt}QLabel{font: 10pt}QLineEdit{font: 10pt}QCheckBox{font: 10pt}")
+        event_log_box.setStyleSheet("QGroupBox{border-width: 4px; padding-top: 18px; font-size: 11pt; font-weight: Normal}QPushButton{font: 10pt}QLabel{font: 10pt}QLineEdit{font: 10pt}QCheckBox{font: 10pt}")
 
         self.clear_log_pb = qt.QPushButton('Clear event log')
         event_log_box.frame.addWidget(self.clear_log_pb, 0, 0)
@@ -501,6 +576,12 @@ class mainWindow(qt.QMainWindow):
         event_log_box.frame.addWidget(self.event_log_tb, 1, 0)
 
         return event_log_box
+
+    def update_event_log(self, msg=None):
+        if msg is not None:
+            self.event_log_deque.append(f"{time.strftime('%Y/%m/%d %H:%M:%S')}: {msg}")
+            
+        self.event_log_tb.setText("\n".join(self.event_log_deque))
 
     # for a really nice tutorial for QThread(), see https://realpython.com/python-pyqt-qthread/
     def start_control(self):
@@ -517,6 +598,7 @@ class mainWindow(qt.QMainWindow):
         self.worker.finished.connect(self.worker.deleteLater)
         self.thread.finished.connect(self.thread.deleteLater)
         self.worker.update[dict].connect(self.update_labels)
+        self.worker.update_event_log[str].connect(self.update_event_log)
 
         self.thread.start()
 
@@ -529,7 +611,11 @@ class mainWindow(qt.QMainWindow):
         elif config_type == "loop_cycle_seconds":
             return
         else:
-            self.worker.cmd_queue.put((config_type, val))
+            # self.worker.cmd_queue.put((config_type, val))
+            # pass
+            
+            if config_type == "custom_command":
+                self.worker.cmd_queue.put((config_type, val))
 
     # @PyQt5.QtCore.pyqtSlot(dict)
     def update_labels(self, info_dict):
@@ -540,48 +626,75 @@ class mainWindow(qt.QMainWindow):
 
         elif info_dict["type"] == "serial_number":
             if info_dict["success"]:
-                self.serial_la.setStyleSheet("QLabel{background: transparent}")
-                self.serial_number_la.setText(info_dict["serial_number"])
+                self.serial_number_la.setStyleSheet("QLabel{background: transparent}")
+                self.serial_number_la.setText(str(info_dict["value"]))
             else:
-                self.serial_la.setStyleSheet("QLabel{background: red}")
+                self.serial_number_la.setStyleSheet("QLabel{background: red}")
                 self.serial_number_la.setText("Fail to read")
 
         elif info_dict["type"] == "temperature_C":
             if info_dict["success"]:
                 self.temp_la.setStyleSheet("QLabel{background: transparent}")
-                self.temp_la.setText(info_dict["temperature_C"])
+                self.temp_la.setText(str(info_dict["value"]))
             else:
                 self.temp_la.setStyleSheet("QLabel{background: red}")
                 self.temp_la.setText("Fail to read")
 
         elif info_dict["type"] == "pump_status":
             if info_dict["success"]:
-                self.pump_la.setStyleSheet("QLabel{background: green}")
-                self.pump_status_la.setText(info_dict["pump_status"])
+                if info_dict["value"]:
+                    self.pump_status_la.setStyleSheet("QLabel{background: green}")
+                    self.pump_status_la.setText("ON")
+                else:
+                    self.pump_status_la.setStyleSheet("QLabel{background: transparent}")
+                    self.pump_status_la.setText("OFF")
             else:
                 self.pump_status_la.setStyleSheet("QLabel{background: red}")
                 self.pump_status_la.setText("Fail to read")
 
         elif info_dict["type"] == "shutter_status":
             if info_dict["success"]:
-                self.shutter_la.setStyleSheet("QLabel{background: green}")
-                self.shutter_status_la.setText(info_dict["shutter_status"])
+                if info_dict["value"]:
+                    self.shutter_status_la.setStyleSheet("QLabel{background: green}")
+                    self.shutter_status_la.setText("OPEN")
+                else:
+                    self.shutter_status_la.setStyleSheet("QLabel{background: transparent}")
+                    self.shutter_status_la.setText("CLOSED")
             else:
                 self.shutter_status_la.setStyleSheet("QLabel{background: red}")
                 self.shutter_status_la.setText("Fail to read")
 
         elif info_dict["type"] == "flashlamp_status":
             if info_dict["success"]:
-                self.flashlamp_status_la.setStyleSheet("QLabel{background: green}")
-                self.flashlamp_status_la.setText(info_dict["flashlamp_status"])
+                if info_dict["value"].name in ["START", "SINGLE"]:
+                    self.flashlamp_status_la.setStyleSheet("QLabel{background: green}")
+                    self.flashlamp_status_la.setText(info_dict["value"].name)
+                elif info_dict["value"].name == "STOP":
+                    self.flashlamp_status_la.setStyleSheet("QLabel{background: Transparent}")
+                    self.flashlamp_status_la.setText(info_dict["value"].name)
+                else:
+                    self.flashlamp_status_la.setStyleSheet("QLabel{background: red}")
+                    self.flashlamp_status_la.setText(f"Unkown Status: {info_dict['value']}.")
             else:
                 self.flashlamp_status_la.setStyleSheet("QLabel{background: red}")
                 self.flashlamp_status_la.setText("Fail to read")
 
+        elif info_dict["type"] == "simmer_status":
+            if info_dict["success"]:
+                if info_dict["value"]:
+                    self.flashlamp_simmer_la.setStyleSheet("QLabel{background: green}")
+                    self.flashlamp_simmer_la.setText("ON")
+                else:
+                    self.flashlamp_simmer_la.setStyleSheet("QLabel{background: transparent}")
+                    self.flashlamp_simmer_la.setText("OFF")
+            else:
+                self.flashlamp_simmer_la.setStyleSheet("QLabel{background: red}")
+                self.flashlamp_simmer_la.setText("Fail to read")
+
         elif info_dict["type"] == "flashlamp_trigger":
             if info_dict["success"]:
                 self.flashlamp_trigger_la.setStyleSheet("QLabel{background: transparent}")
-                self.flashlamp_trigger_la.setText(info_dict["flashlamp_trigger"])
+                self.flashlamp_trigger_la.setText(info_dict["value"].name)
             else:
                 self.flashlamp_trigger_la.setStyleSheet("QLabel{background: red}")
                 self.flashlamp_trigger_la.setText("Fail to read")
@@ -589,7 +702,7 @@ class mainWindow(qt.QMainWindow):
         elif info_dict["type"] == "flashlamp_frequency_Hz":
             if info_dict["success"]:
                 self.flashlamp_frequency_la.setStyleSheet("QLabel{background: transparent}")
-                self.flashlamp_frequency_la.setText(info_dict["flashlamp_frequency_Hz"])
+                self.flashlamp_frequency_la.setText("{:.2f}".format(info_dict["value"]))
             else:
                 self.flashlamp_frequency_la.setStyleSheet("QLabel{background: red}")
                 self.flashlamp_frequency_la.setText("Fail to read")
@@ -597,7 +710,7 @@ class mainWindow(qt.QMainWindow):
         elif info_dict["type"] == "flashlamp_voltage_V":
             if info_dict["success"]:
                 self.flashlamp_voltage_la.setStyleSheet("QLabel{background: transparent}")
-                self.flashlamp_voltage_la.setText(info_dict["flashlamp_voltage_V"])
+                self.flashlamp_voltage_la.setText(str(info_dict["value"]))
             else:
                 self.flashlamp_voltage_la.setStyleSheet("QLabel{background: red}")
                 self.flashlamp_voltage_la.setText("Fail to read")
@@ -605,7 +718,7 @@ class mainWindow(qt.QMainWindow):
         elif info_dict["type"] == "flashlamp_energy_J":
             if info_dict["success"]:
                 self.flashlamp_energy_la.setStyleSheet("QLabel{background: transparent}")
-                self.flashlamp_energy_la.setText(info_dict["flashlamp_energy_J"])
+                self.flashlamp_energy_la.setText("{:.1f}".format(info_dict["value"]))
             else:
                 self.flashlamp_energy_la.setStyleSheet("QLabel{background: red}")
                 self.flashlamp_energy_la.setText("Fail to read")
@@ -613,7 +726,7 @@ class mainWindow(qt.QMainWindow):
         elif info_dict["type"] == "flashlamp_capacitance_uF":
             if info_dict["success"]:
                 self.flashlamp_capacitance_la.setStyleSheet("QLabel{background: transparent}")
-                self.flashlamp_capacitance_la.setText(info_dict["flashlamp_capacitance_uF"])
+                self.flashlamp_capacitance_la.setText("{:.1f}".format(info_dict["value"]))
             else:
                 self.flashlamp_capacitance_la.setStyleSheet("QLabel{background: red}")
                 self.flashlamp_capacitance_la.setText("Fail to read")
@@ -621,23 +734,27 @@ class mainWindow(qt.QMainWindow):
         elif info_dict["type"] == "flashlamp_counter":
             if info_dict["success"]:
                 self.flashlamp_counter_la.setStyleSheet("QLabel{background: transparent}")
-                self.flashlamp_counter_la.setText(info_dict["flashlamp_counter"])
+                self.flashlamp_counter_la.setText(str(info_dict["value"]))
             else:
                 self.flashlamp_counter_la.setStyleSheet("QLabel{background: red}")
                 self.flashlamp_counter_la.setText("Fail to read")
 
-        elif info_dict["type"] == "flashlamp_user_couter":
+        elif info_dict["type"] == "flashlamp_user_counter":
             if info_dict["success"]:
                 self.flashlamp_user_counter_la.setStyleSheet("QLabel{background: transparent}")
-                self.flashlamp_user_counter_la.setText(info_dict["flashlamp_user_counter"])
+                self.flashlamp_user_counter_la.setText(str(info_dict["value"]))
             else:
                 self.flashlamp_user_counter_la.setStyleSheet("QLabel{background: red}")
                 self.flashlamp_user_counter_la.setText("Fail to read")
 
         elif info_dict["type"] == "qswitch_status":
             if info_dict["success"]:
-                self.qswitch_status_la.setStyleSheet("QLabel{background: green}")
-                self.qswitch_status_la.setText(info_dict["qswitch_status"])
+                if info_dict["value"]:
+                    self.qswitch_status_la.setStyleSheet("QLabel{background: green}")
+                    self.qswitch_status_la.setText("ON")
+                else:
+                    self.qswitch_status_la.setStyleSheet("QLabel{background: transparent}")
+                    self.qswitch_status_la.setText("OFF")
             else:
                 self.qswitch_status_la.setStyleSheet("QLabel{background: red}")
                 self.qswitch_status_la.setText("Fail to read")
@@ -645,7 +762,7 @@ class mainWindow(qt.QMainWindow):
         elif info_dict["type"] == "qswitch_mode":
             if info_dict["success"]:
                 self.qswitch_mode_la.setStyleSheet("QLabel{background: transparent}")
-                self.qswitch_mode_la.setText(info_dict["qswitch_mode"])
+                self.qswitch_mode_la.setText(info_dict["value"].name)
             else:
                 self.qswitch_mode_la.setStyleSheet("QLabel{background: red}")
                 self.qswitch_mode_la.setText("Fail to read")
@@ -653,23 +770,23 @@ class mainWindow(qt.QMainWindow):
         elif info_dict["type"] == "qswitch_delay_us":
             if info_dict["success"]:
                 self.qswitch_delay_la.setStyleSheet("QLabel{background: transparent}")
-                self.qswitch_delay_la.setText(info_dict["qswitch_delay_us"])
+                self.qswitch_delay_la.setText(str(info_dict["value"]))
             else:
                 self.qswitch_delay_la.setStyleSheet("QLabel{background: red}")
                 self.qswitch_delay_la.setText("Fail to read")
 
-        elif info_dict["type"] == "qswitch_frequency_divider":
+        elif info_dict["type"] == "qswitch_freq_divider":
             if info_dict["success"]:
                 self.qswitch_freq_divider_la.setStyleSheet("QLabel{background: transparent}")
-                self.qswitch_freq_divider_la.setText(info_dict["qswitch_frequency_divider"])
+                self.qswitch_freq_divider_la.setText(str(info_dict["value"]))
             else:
                 self.qswitch_freq_divider_la.setStyleSheet("QLabel{background: red}")
-                self.qswitch_freq_dovoder_la.setText("Fail to read")
+                self.qswitch_freq_divider_la.setText("Fail to read")
 
         elif info_dict["type"] == "qswitch_burst_pulses":
             if info_dict["success"]:
                 self.qswitch_burst_pulses_la.setStyleSheet("QLabel{background: transparent}")
-                self.qswitch_burst_pulses_la.setText(info_dict["qswitch_burst_pulses"])
+                self.qswitch_burst_pulses_la.setText(str(info_dict["value"]))
             else:
                 self.qswitch_burst_pulses_la.setStyleSheet("QLabel{background: red}")
                 self.qswitch_burst_pulses_la.setText("Fail to read")
@@ -677,18 +794,24 @@ class mainWindow(qt.QMainWindow):
         elif info_dict["type"] == "qswitch_counter":
             if info_dict["success"]:
                 self.qswitch_counter_la.setStyleSheet("QLabel{background: transparent}")
-                self.qswitch_counter_la.setText(info_dict["qswitch_counter"])
+                self.qswitch_counter_la.setText(str(info_dict["value"]))
             else:
                 self.qswitch_counter_la.setStyleSheet("QLabel{background: red}")
                 self.qswitch_counter_la.setText("Fail to read")
 
-        elif info_dict["type"] == "qswitch_user_couter":
+        elif info_dict["type"] == "qswitch_user_counter":
             if info_dict["success"]:
                 self.qswitch_user_counter_la.setStyleSheet("QLabel{background: transparent}")
-                self.qswitch_user_counter_la.setText(info_dict["qswitch_user_counter"])
+                self.qswitch_user_counter_la.setText(str(info_dict["value"]))
             else:
                 self.qswitch_user_counter_la.setStyleSheet("QLabel{background: red}")
                 self.qswitch_user_counter_la.setText("Fail to read")
+
+        elif info_dict["type"] == "custom_command":
+            if info_dict["success"]:
+                logging.info(str(info_dict["value"]))
+            else:
+                logging.error(str(info_dict["value"]))
         
         else:
             logging.error(f"Unrecognized command: {info_dict['type']}, {info_dict['success']}, {info_dict['value']}")
@@ -706,7 +829,7 @@ class mainWindow(qt.QMainWindow):
         com_new = self.com_port_cb.currentText()
 
         if com_new != com:
-            self.config["setting"]["com_port"] = com
+            self.config["setting"]["com_port"] = com_new
             self.reconnect_com()
 
     def reconnect_com(self):
@@ -716,7 +839,7 @@ class mainWindow(qt.QMainWindow):
             self.thread.wait()
         except RuntimeError as err:
             pass
-        time.sleep(0.2)
+        time.sleep(0.05)
 
         self.running = True
         self.start_control() 

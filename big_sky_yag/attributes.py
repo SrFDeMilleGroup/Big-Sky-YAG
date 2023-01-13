@@ -274,7 +274,7 @@ class QSwitch:
     counter = IntProperty(
         name="shot counter", command="CQ", ret_string="ct QS ---------"
     )
-    counter_user = IntProperty(
+    user_counter = IntProperty(
         name="user shot counter", command="UCQ", ret_string="cu QS ---------"
     )
     delay = IntProperty(
