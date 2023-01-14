@@ -110,6 +110,8 @@ class NewDoubleSpinBox(qt.QDoubleSpinBox):
         cursor_position += prefix_len
         self.lineEdit().setCursorPosition(cursor_position)
 
+        self.editingFinished.emit()
+
     def wheelEvent(self, event):
         """Modify the wheelEvent so this widget only responds when it has focus."""
         if self.hasFocus():
@@ -182,6 +184,8 @@ class NewSpinBox(qt.QSpinBox):
         cursor_position += (new_n_chars - n_chars)
         cursor_position += prefix_len
         self.lineEdit().setCursorPosition(cursor_position)
+
+        self.editingFinished.emit()
 
     def wheelEvent(self, event):
         """Modify the wheelEvent so this widget only responds when it has focus."""

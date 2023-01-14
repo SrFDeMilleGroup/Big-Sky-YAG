@@ -142,10 +142,3 @@ class BigSkyYag:
         args.append(Trigger.INTERNAL if status_ints[3] <= 3 else Trigger.EXTERNAL)
 
         return LaserStatus(*args)
-
-    def close_com(self):
-        try:
-            self.instrument.clear()
-            self.instrument.close()
-        except AttributeError as err:
-            pass

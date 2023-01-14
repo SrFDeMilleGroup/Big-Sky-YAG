@@ -96,3 +96,6 @@ The flashlamp and Q-Switch can be triggered either internally, externally, or in
   ```Python
   yag.qswitch.single()
   ```
+
+  ## Graphical user interface
+  ![](docs/gui-screenshot.PNG)
