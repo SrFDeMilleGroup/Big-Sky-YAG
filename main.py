@@ -387,6 +387,17 @@ class Worker(PyQt5.QtCore.QObject):
                     break
 
                 try:
+                    self.update.emit({"type": "flashlamp_intlk", "success": True, "value": self.yag.flashlamp.interlock})
+                except Exception as err:
+                    try:
+                        self.update.emit({"type": "flashlamp_intlk", "success": False, "value": "Fail to read"})
+                    except RuntimeError:
+                        pass
+
+                if not self.parent.running:
+                    break
+
+                try:
                     self.update.emit({"type": "qswitch_status", "success": True, "value": "ON" if self.yag.qswitch.status else "OFF"})
                 except Exception as err:
                     try:
@@ -464,6 +475,17 @@ class Worker(PyQt5.QtCore.QObject):
                     try:
                         self.update.emit({"type": "qswitch_user_counter", "success": False, "value": "Fail to read"})
                         # self.update_event_log.emit(f"Ununable to read YAG qswitch user counter.\n{err}")
+                    except RuntimeError:
+                        pass
+
+                if not self.parent.running:
+                    break
+
+                try:
+                    self.update.emit({"type": "qswitch_intlk", "success": True, "value":self.yag.qswitch.interlock})
+                except Exception as err:
+                    try: 
+                        self.update.emit({"type": "qswitch_intlk", "success": False, "value": "Fail to read"})
                     except RuntimeError:
                         pass
 
@@ -566,13 +588,17 @@ class mainWindow(qt.QMainWindow):
         ctrl_box.frame.addWidget(qt.QLabel("loop cycle (s):"), 2, 0, alignment=PyQt5.QtCore.Qt.AlignRight)
         self.loop_cycle_dsb = widgets.NewDoubleSpinBox(range=(0, 600), decimals=1)
         self.loop_cycle_dsb.setValue(self.config.getfloat("setting", "loop_cycle_seconds"))
-        self.loop_cycle_dsb.valueChanged[float].connect(lambda val, config_type="loop_cycle_seconds": self.update_config(config_type, val))
+        # self.loop_cycle_dsb.valueChanged[float].connect(lambda val, config_type="loop_cycle_seconds": self.update_config(config_type, val))
+        # self.loop_cycle_dsb.editingFinished.connect(lambda dsb=self.loop_cycle_dsb, config_type="loop_cycle_seconds": self.update_config(config_type, dsb.value()))
+        self.loop_cycle_dsb.editingFinished.connect(lambda val="": self.update_config("loop_cycle_seconds", self.loop_cycle_dsb.value()))
         ctrl_box.frame.addWidget(self.loop_cycle_dsb, 2, 1)
 
         ctrl_box.frame.addWidget(qt.QLabel("Configurations:"), 3, 0, alignment=PyQt5.QtCore.Qt.AlignRight)
         self.save_config_pb = qt.QPushButton("Save config")
+        self.save_config_pb.setEnabled(False)
         ctrl_box.frame.addWidget(self.save_config_pb, 3, 1)
         self.load_config_pb = qt.QPushButton("Load config")
+        self.load_config_pb.setEnabled(False)
         ctrl_box.frame.addWidget(self.load_config_pb, 3, 2)
 
         ctrl_box.frame.addWidget(qt.QLabel("Send custom command:"), 4, 0, alignment=PyQt5.QtCore.Qt.AlignRight)
@@ -656,7 +682,8 @@ class mainWindow(qt.QMainWindow):
         ctrl_box.frame.addWidget(self.flashlamp_voltage_la, 4, 1)
         self.flashlamp_voltage_sb = widgets.NewSpinBox(range=(500, 1800))
         self.flashlamp_voltage_sb.setValue(self.config.getint("setting", "flashlamp_voltage_V"))
-        self.flashlamp_voltage_sb.valueChanged[int].connect(lambda val, config_type="flashlamp_voltage_V": self.update_config(config_type, val))
+        # self.flashlamp_voltage_sb.valueChanged[int].connect(lambda val, config_type="flashlamp_voltage_V": self.update_config(config_type, val))
+        self.flashlamp_voltage_sb.editingFinished.connect(lambda sb=self.flashlamp_voltage_sb, config_type="flashlamp_voltage_V": self.update_config(config_type, sb.value()))
         self.flashlamp_voltage_sb.setToolTip("Change flashlamp voltage here.")
         ctrl_box.frame.addWidget(self.flashlamp_voltage_sb, 4, 2)
 
@@ -665,7 +692,8 @@ class mainWindow(qt.QMainWindow):
         ctrl_box.frame.addWidget(self.flashlamp_energy_la, 5, 1)
         self.flashlamp_energy_dsb = widgets.NewDoubleSpinBox(range=(7, 23), decimals=1)
         self.flashlamp_energy_dsb.setValue(self.config.getfloat("setting", "flashlamp_energy_J"))
-        self.flashlamp_energy_dsb.valueChanged[float].connect(lambda val, config_type="flashlamp_energy_J": self.update_config(config_type, val))
+        # self.flashlamp_energy_dsb.valueChanged[float].connect(lambda val, config_type="flashlamp_energy_J": self.update_config(config_type, val))
+        self.flashlamp_energy_dsb.editingFinished.connect(lambda dsb=self.flashlamp_energy_dsb, config_type="flashlamp_energy_J": self.update_config(config_type, dsb.value()))
         self.flashlamp_energy_dsb.setToolTip("Change flashlamp energy here.")
         ctrl_box.frame.addWidget(self.flashlamp_energy_dsb, 5, 2)
 
@@ -674,7 +702,8 @@ class mainWindow(qt.QMainWindow):
         ctrl_box.frame.addWidget(self.flashlamp_capacitance_la, 6, 1)
         self.flashlamp_capacitance_dsb = widgets.NewDoubleSpinBox(range=(27, 33), decimals=1)
         self.flashlamp_capacitance_dsb.setValue(self.config.getfloat("setting", "flashlamp_capacitance_uF"))
-        self.flashlamp_capacitance_dsb.valueChanged[float].connect(lambda val, config_type="flashlamp_capacitance_uF": self.update_config(config_type, val))
+        # self.flashlamp_capacitance_dsb.valueChanged[float].connect(lambda val, config_type="flashlamp_capacitance_uF": self.update_config(config_type, val))
+        self.flashlamp_capacitance_dsb.editingFinished.connect(lambda dsb=self.flashlamp_capacitance_dsb, config_type="flashlamp_capacitance_uF": self.update_config(config_type, dsb.value()))
         self.flashlamp_capacitance_dsb.setToolTip("Change flashlamp capacitance here.")
         ctrl_box.frame.addWidget(self.flashlamp_capacitance_dsb, 6, 2)
 
@@ -688,6 +717,29 @@ class mainWindow(qt.QMainWindow):
         self.flashlamp_user_counter_pb = qt.QPushButton("Reset user counter")
         self.flashlamp_user_counter_pb.clicked[bool].connect(lambda val, config_type="reset_flashlamp_user_counter": self.update_config(config_type))
         ctrl_box.frame.addWidget(self.flashlamp_user_counter_pb, 8, 2)
+
+        ctrl_box.frame.addWidget(qt.QLabel("-"*30+"  interloack  "+"-"*30), 9, 0, 1, 3, alignment=PyQt5.QtCore.Qt.AlignCenter)
+
+        self.flashlamp_intlk_water_flow_la = qt.QLabel("N/A")
+        ctrl_box.frame.addWidget(self.flashlamp_intlk_water_flow_la, 10, 0, alignment=PyQt5.QtCore.Qt.AlignCenter)
+        self.flashlamp_intlk_water_level_la = qt.QLabel("N/A")
+        ctrl_box.frame.addWidget(self.flashlamp_intlk_water_level_la, 10, 1, alignment=PyQt5.QtCore.Qt.AlignCenter)
+        self.flashlamp_intlk_lamp_head_la = qt.QLabel("N/A")
+        ctrl_box.frame.addWidget(self.flashlamp_intlk_lamp_head_la, 10, 2, alignment=PyQt5.QtCore.Qt.AlignCenter)
+
+        self.flashlamp_intlk_auxiliary_la = qt.QLabel("N/A")
+        ctrl_box.frame.addWidget(self.flashlamp_intlk_auxiliary_la, 11, 0, alignment=PyQt5.QtCore.Qt.AlignCenter)
+        self.flashlamp_intlk_external_la = qt.QLabel("N/A")
+        ctrl_box.frame.addWidget(self.flashlamp_intlk_external_la, 11, 1, alignment=PyQt5.QtCore.Qt.AlignCenter)
+        self.flashlamp_intlk_cover_la = qt.QLabel("N/A")
+        ctrl_box.frame.addWidget(self.flashlamp_intlk_cover_la, 11, 2, alignment=PyQt5.QtCore.Qt.AlignCenter)
+
+        self.flashlamp_intlk_capacitor_la = qt.QLabel("N/A")
+        ctrl_box.frame.addWidget(self.flashlamp_intlk_capacitor_la, 12, 0, alignment=PyQt5.QtCore.Qt.AlignCenter)
+        self.flashlamp_intlk_simmer_la = qt.QLabel("N/A")
+        ctrl_box.frame.addWidget(self.flashlamp_intlk_simmer_la, 12, 1, alignment=PyQt5.QtCore.Qt.AlignCenter)
+        self.flashlamp_intlk_water_temp_la = qt.QLabel("N/A")
+        ctrl_box.frame.addWidget(self.flashlamp_intlk_water_temp_la, 12, 2, alignment=PyQt5.QtCore.Qt.AlignCenter)
  
         # let column 100 grow if there are extra space (row index start from 0, default stretch is 0)
         ctrl_box.frame.setRowStretch(100, 1)
@@ -722,7 +774,8 @@ class mainWindow(qt.QMainWindow):
         ctrl_box.frame.addWidget(self.qswitch_delay_la, 2, 1)
         self.qswitch_delay_sb = widgets.NewSpinBox(range=(10, 999))
         self.qswitch_delay_sb.setValue(self.config.getint("setting", "qswitch_delay_us"))
-        self.qswitch_delay_sb.valueChanged[int].connect(lambda val, config_type="qswitch_delay_us": self.update_config(config_type, val))
+        # self.qswitch_delay_sb.valueChanged[int].connect(lambda val, config_type="qswitch_delay_us": self.update_config(config_type, val))
+        self.qswitch_delay_sb.editingFinished.connect(lambda sb=self.qswitch_delay_sb, config_type="qswitch_delay_us": self.update_config(config_type, sb.value()))
         self.qswitch_delay_sb.setToolTip("Change QSwitch delay here.")
         ctrl_box.frame.addWidget(self.qswitch_delay_sb, 2, 2)
 
@@ -731,7 +784,8 @@ class mainWindow(qt.QMainWindow):
         ctrl_box.frame.addWidget(self.qswitch_freq_divider_la, 3, 1)
         self.qswitch_freq_divider_sb = widgets.NewSpinBox(range=(1, 99))
         self.qswitch_freq_divider_sb.setValue(self.config.getint("setting", "qswitch_freq_divider"))
-        self.qswitch_freq_divider_sb.valueChanged[int].connect(lambda val, config_type="qswitch_freq_divider": self.update_config(config_type, val))
+        # self.qswitch_freq_divider_sb.valueChanged[int].connect(lambda val, config_type="qswitch_freq_divider": self.update_config(config_type, val))
+        self.qswitch_freq_divider_sb.editingFinished.connect(lambda sb=self.qswitch_freq_divider_sb, config_type="qswitch_freq_divider": self.update_config(config_type, sb.value()))
         self.qswitch_freq_divider_sb.setToolTip("Change QSwitch frequency divider here.")
         ctrl_box.frame.addWidget(self.qswitch_freq_divider_sb, 3, 2)
 
@@ -740,7 +794,8 @@ class mainWindow(qt.QMainWindow):
         ctrl_box.frame.addWidget(self.qswitch_burst_pulses_la, 4, 1)
         self.qswitch_burst_pulses_sb = widgets.NewSpinBox(range=(1, 999))
         self.qswitch_burst_pulses_sb.setValue(self.config.getint("setting", "qswitch_burst_pulses"))
-        self.qswitch_burst_pulses_sb.valueChanged[int].connect(lambda val, config_type="qswitch_vurst_pulses": self.update_config(config_type, val))
+        # self.qswitch_burst_pulses_sb.valueChanged[int].connect(lambda val, config_type="qswitch_vurst_pulses": self.update_config(config_type, val))
+        self.qswitch_burst_pulses_sb.editingFinished.connect(lambda sb=self.qswitch_burst_pulses_sb, config_type="qswitch_vurst_pulses": self.update_config(config_type, sb.value()))
         self.qswitch_burst_pulses_sb.setToolTip("Change QSwitch burst pulse number here.")
         ctrl_box.frame.addWidget(self.qswitch_burst_pulses_sb, 4, 2)
 
@@ -754,6 +809,15 @@ class mainWindow(qt.QMainWindow):
         self.qswitch_user_counter_pb = qt.QPushButton("Reset user counter")
         self.qswitch_user_counter_pb.clicked[bool].connect(lambda val, config_type="reset_qswitch_user_counter": self.update_config(config_type))
         ctrl_box.frame.addWidget(self.qswitch_user_counter_pb, 6, 2)
+
+        ctrl_box.frame.addWidget(qt.QLabel("-"*30+"  interloack  "+"-"*30), 7, 0, 1, 3, alignment=PyQt5.QtCore.Qt.AlignCenter)
+
+        self.qswitch_intlk_emission_la = qt.QLabel("N/A")
+        ctrl_box.frame.addWidget(self.qswitch_intlk_emission_la, 8, 0, alignment=PyQt5.QtCore.Qt.AlignCenter)
+        self.qswitch_intlk_water_temp_la = qt.QLabel("N/A")
+        ctrl_box.frame.addWidget(self.qswitch_intlk_water_temp_la, 8, 1, alignment=PyQt5.QtCore.Qt.AlignCenter)
+        self.qswitch_intlk_shutter_la = qt.QLabel("N/A")
+        ctrl_box.frame.addWidget(self.qswitch_intlk_shutter_la, 8, 2, alignment=PyQt5.QtCore.Qt.AlignCenter)
 
         # let column 100 grow if there are extra space (row index start from 0, default stretch is 0)
         ctrl_box.frame.setRowStretch(100, 1)
@@ -815,6 +879,8 @@ class mainWindow(qt.QMainWindow):
         self.thread.start()
 
     def update_config(self, config_type, val=None):
+        # print((config_type, val))
+
         if config_type in self.config["setting"].keys():
             self.config["setting"][config_type] = str(val)
 
@@ -823,7 +889,6 @@ class mainWindow(qt.QMainWindow):
         elif config_type == "loop_cycle_seconds":
             return
         else:
-            print(config_type)
             self.worker.cmd_queue.put((config_type, val))
 
     # @PyQt5.QtCore.pyqtSlot(dict)
@@ -892,6 +957,46 @@ class mainWindow(qt.QMainWindow):
             self.flashlamp_user_counter_la.setText(info_dict["value"])
             self.flashlamp_user_counter_la.setStyleSheet("QLabel{background: transparent}" if info_dict["success"] else "QLabel{background: red}")
 
+        elif info_dict["type"] == "flashlamp_intlk":
+            if info_dict["success"]:
+                self.flashlamp_intlk_water_flow_la.setText("Water flow: Failed" if info_dict["value"].WATER_FLOW else "Water flow: Pass")
+                self.flashlamp_intlk_water_flow_la.setStyleSheet("QLabel{background: red}" if info_dict["value"].WATER_FLOW else "QLabel{background: transparent}")
+                self.flashlamp_intlk_water_level_la.setText("Water level: Failed" if info_dict["value"].WATER_LEVEL else "Water level: Pass")
+                self.flashlamp_intlk_water_level_la.setStyleSheet("QLabel{background: red}" if info_dict["value"].WATER_LEVEL else "QLabel{background: transparent}")
+                self.flashlamp_intlk_lamp_head_la.setText("Lamp head conn: Failed" if info_dict["value"].LAMP_HEAD_CONN else "Lamp head conn: Pass")
+                self.flashlamp_intlk_lamp_head_la.setStyleSheet("QLabel{background: red}" if info_dict["value"].LAMP_HEAD_CONN else "QLabel{background: transparent}")
+                self.flashlamp_intlk_auxiliary_la.setText("Auxiliary conn: Failed" if info_dict["value"].AUXILIARY_CONN else "Auxiliary conn: Pass")
+                self.flashlamp_intlk_auxiliary_la.setStyleSheet("QLabel{background: red}" if info_dict["value"].AUXILIARY_CONN else "QLabel{background: transparent}")
+                self.flashlamp_intlk_external_la.setText("External intlk: Failed" if info_dict["value"].EXT_INTERLOCK else "External intlk: Pass")
+                self.flashlamp_intlk_external_la.setStyleSheet("QLabel{background: red}" if info_dict["value"].EXT_INTERLOCK else "QLabel{background: transparent}")
+                self.flashlamp_intlk_cover_la.setText("Cover status: Failed" if info_dict["value"].COVER_OPEN else "Cover status: Pass")
+                self.flashlamp_intlk_cover_la.setStyleSheet("QLabel{background: red}" if info_dict["value"].COVER_OPEN else "QLabel{background: transparent}")
+                self.flashlamp_intlk_capacitor_la.setText("Capacitor status: Failed" if info_dict["value"].CAPACITOR_LOAD_FAIL else "Capacitor status: Pass")
+                self.flashlamp_intlk_capacitor_la.setStyleSheet("QLabel{background: red}" if info_dict["value"].CAPACITOR_LOAD_FAIL else "QLabel{background: transparent}")
+                self.flashlamp_intlk_simmer_la.setText("Simmer status: Failed" if info_dict["value"].SIMMER_FAIL else "Simmer status: Pass")
+                self.flashlamp_intlk_simmer_la.setStyleSheet("QLabel{background: red}" if info_dict["value"].SIMMER_FAIL else "QLabel{background: transparent}")
+                self.flashlamp_intlk_water_temp_la.setText("Water temp: Failed" if info_dict["value"].WATER_TEMP else "Water temp: Pass")
+                self.flashlamp_intlk_water_temp_la.setStyleSheet("QLabel{background: red}" if info_dict["value"].WATER_TEMP else "QLabel{background: transparent}")
+            else:
+                self.flashlamp_intlk_water_flow_la.setText(info_dict["value"])
+                self.flashlamp_intlk_water_flow_la.setStyleSheet("QLabel{background: red}")
+                self.flashlamp_intlk_water_level_la.setText(info_dict["value"])
+                self.flashlamp_intlk_water_level_la.setStyleSheet("QLabel{background: red}")
+                self.flashlamp_intlk_lamp_head_la.setText(info_dict["value"])
+                self.flashlamp_intlk_lamp_head_la.setStyleSheet("QLabel{background: red}")
+                self.flashlamp_intlk_auxiliary_la.setText(info_dict["value"])
+                self.flashlamp_intlk_auxiliary_la.setStyleSheet("QLabel{background: red}")
+                self.flashlamp_intlk_external_la.setText(info_dict["value"])
+                self.flashlamp_intlk_external_la.setStyleSheet("QLabel{background: red}")
+                self.flashlamp_intlk_cover_la.setText(info_dict["value"])
+                self.flashlamp_intlk_cover_la.setStyleSheet("QLabel{background: red}")
+                self.flashlamp_intlk_capacitor_la.setText(info_dict["value"])
+                self.flashlamp_intlk_capacitor_la.setStyleSheet("QLabel{background: red}")
+                self.flashlamp_intlk_simmer_la.setText(info_dict["value"])
+                self.flashlamp_intlk_simmer_la.setStyleSheet("QLabel{background: red}")
+                self.flashlamp_intlk_water_temp_la.setText(info_dict["value"])
+                self.flashlamp_intlk_water_temp_la.setStyleSheet("QLabel{background: red}")
+        
         elif info_dict["type"] == "qswitch_status":
             self.qswitch_status_la.setText(info_dict["value"])
             if info_dict["success"]:
@@ -922,6 +1027,22 @@ class mainWindow(qt.QMainWindow):
         elif info_dict["type"] == "qswitch_user_counter":
             self.qswitch_user_counter_la.setText(info_dict["value"])
             self.qswitch_user_counter_la.setStyleSheet("QLabel{background: transparent}" if info_dict["success"] else "QLabel{background: red}")
+
+        elif info_dict["type"] == "qswitch_intlk":
+            if info_dict["success"]:
+                self.qswitch_intlk_emission_la.setText("Emission allowed: Failed" if info_dict["value"].EMISSION_INHIBITED else "Emission allowed: Pass")
+                self.qswitch_intlk_emission_la.setStyleSheet("QLabel{background: red}" if info_dict["value"].EMISSION_INHIBITED else "QLabel{background: transparent}")
+                self.qswitch_intlk_water_temp_la.setText("Water temp: Failed" if info_dict["value"].WATER_TEMP else "Water temp: Pass")
+                self.qswitch_intlk_water_temp_la.setStyleSheet("QLabel{background: red}" if info_dict["value"].WATER_TEMP else "QLabel{background: transparent}")
+                self.qswitch_intlk_shutter_la.setText("Shutter status: Failed" if info_dict["value"].SHUTTER_CLOSED else "Shutter status: Pass")
+                self.qswitch_intlk_shutter_la.setStyleSheet("QLabel{background: red}" if info_dict["value"].SHUTTER_CLOSED else "QLabel{background: transparent}")
+            else:
+                self.qswitch_intlk_emission_la.setText(info_dict["value"])
+                self.qswitch_intlk_emission_la.setStyleSheet("QLabel{background: red}")
+                self.qswitch_intlk_water_temp_la.setText(info_dict["value"])
+                self.qswitch_intlk_water_temp_la.setStyleSheet("QLabel{background: red}")
+                self.qswitch_intlk_shutter_la.setText(info_dict["value"])
+                self.qswitch_intlk_shutter_la.setStyleSheet("QLabel{background: red}")
 
         else:
             self.update_event_log(f"Unrecognized command: {info_dict['type']}, {info_dict['success']}, {info_dict['value']}")

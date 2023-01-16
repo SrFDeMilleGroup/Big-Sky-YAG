@@ -10,8 +10,11 @@ yag = BigSkyYag(resource_name = "COM3")
 # print(yag.laser_status)
 # print(yag.temperature_cooling_group)
 # print(yag.flashlamp.interlock)
-yag.qswitch.off()
-print(yag.qswitch.status)
+# yag.qswitch.off()
+print(yag.flashlamp.energy)
+# print(yag.flashlamp.voltage)
+# yag.flashlamp.voltage = 850
+yag.flashlamp.energy = 11
 # time.sleep(2)
 # print(yag.shutter)
 

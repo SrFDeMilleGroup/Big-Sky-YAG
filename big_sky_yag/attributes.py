@@ -63,9 +63,9 @@ class IntProperty(Property):
         retval = super().__set__(instance, value)
         # check if input value was set properly
         if (span := self._span) is not None and self._ret_string is not None:
-            ret_string = self._ret_string.replace(
-                self._ret_string[span[0] : span[1]], f"{value}"
-            )
+            # ret_string = self._ret_string.replace(
+            #     self._ret_string[span[0] : span[1]], f"{value}"
+            # )
             assert int(retval[span[0] : span[1]]) == value
         return retval
 
@@ -98,10 +98,12 @@ class FloatProperty(Property):
         retval = super().__set__(instance, _value)
         # check if input value was set properly
         if (span := self._span) is not None and self._ret_string is not None:
-            ret_string = self._ret_string.replace(
-                self._ret_string[span[0] : span[1]], f"{round(value,self._decimals)}"
-            )
-            assert retval == ret_string
+            # ret_string = self._ret_string.replace(
+            #     self._ret_string[span[0] : span[1]], f"{round(value,self._decimals)}"
+            # )
+
+            # assert retval == ret_string
+            assert float(retval[span[0] : span[1]]) == value
         return retval
 
 
