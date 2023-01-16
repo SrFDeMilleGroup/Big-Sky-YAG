@@ -575,8 +575,7 @@ class mainWindow(qt.QMainWindow):
 
         ctrl_box.frame.addWidget(qt.QLabel("COM port:"), 0, 0, alignment=PyQt5.QtCore.Qt.AlignRight)
         self.com_port_cb = widgets.NewComboBox(item_list=self.get_com_port_list(), current_item=self.config.get("setting", "com_port"))
-        self.com_port_cb = widgets.NewComboBox(item_list=[self.config.get("setting", "com_port")], current_item=self.config.get("setting", "com_port"))
-        self.com_port_cb.currentTextChanged[str].connect(lambda val, config_type="com_port": self.update_config(config_type, val))
+        self.com_port_cb.textActivated[str].connect(lambda val, config_type="com_port": self.update_config(config_type, val))
         ctrl_box.frame.addWidget(self.com_port_cb, 0, 1)
         self.reconnect_com_pb = qt.QPushButton("Reconnect COM")
         self.reconnect_com_pb.clicked[bool].connect(lambda val: self.reconnect_com())
@@ -663,7 +662,7 @@ class mainWindow(qt.QMainWindow):
         self.flashlamp_trigger_la = qt.QLabel("N/A")
         ctrl_box.frame.addWidget(self.flashlamp_trigger_la, 2, 1)
         self.flashlamp_trigger_cb = widgets.NewComboBox(item_list=["internal", "external"], current_item=self.config.get("setting", "flashlamp_trigger"))
-        self.flashlamp_trigger_cb.currentTextChanged[str].connect(lambda val, config_type="flashlamp_trigger": self.update_config(config_type, val))
+        self.flashlamp_trigger_cb.textActivated[str].connect(lambda val, config_type="flashlamp_trigger": self.update_config(config_type, val))
         self.flashlamp_trigger_cb.setToolTip("Choose trigger mode here.")
         ctrl_box.frame.addWidget(self.flashlamp_trigger_cb, 2, 2)
 
@@ -765,7 +764,7 @@ class mainWindow(qt.QMainWindow):
         self.qswitch_mode_la = qt.QLabel("N/A")
         ctrl_box.frame.addWidget(self.qswitch_mode_la, 1, 1)
         self.qswitch_mode_cb = widgets.NewComboBox(item_list=["auto", "burst", "external"], current_item=self.config.get("setting", "qswitch_mode"))
-        self.qswitch_mode_cb.currentTextChanged[str].connect(lambda val, config_type="qswitch_mode": self.update_config(config_type, val))
+        self.qswitch_mode_cb.textActivated[str].connect(lambda val, config_type="qswitch_mode": self.update_config(config_type, val))
         self.qswitch_mode_cb.setToolTip("Choose trigger mode here.")
         ctrl_box.frame.addWidget(self.qswitch_mode_cb, 1, 2)
 
