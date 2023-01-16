@@ -61,7 +61,7 @@ The flashlamp and Q-Switch can be triggered either internally, externally, or in
   yag.qswitch.mode = "external"
   ```
 
-### Other commands
+## Other commands
 * save the current configuration
   ```Python
   yag.save()
@@ -98,4 +98,4 @@ The flashlamp and Q-Switch can be triggered either internally, externally, or in
   ```
 
   ## Graphical user interface
-  ![](docs/gui-screenshot.PNG)
+  ![](docs/gui_screenshot.PNG)
