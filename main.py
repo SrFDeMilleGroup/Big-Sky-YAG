@@ -99,7 +99,7 @@ class Worker(PyQt5.QtCore.QObject):
                     self.update.emit({"type": config_type, "success": True, "value": cap})
                     self.update_event_log.emit(f"Set flashlamp capacitance. It reads {cap} uF now.")
 
-                elif config_type == "falshlamp_reset_user_counter":
+                elif config_type == "reset_flashlamp_user_counter":
                     self.update_event_log.emit("Resetting flashlamp user counter...")
                     self.yag.flashlamp.user_counter_reset()
                     count = str(self.yag.flashlamp.user_counter)
@@ -148,7 +148,7 @@ class Worker(PyQt5.QtCore.QObject):
                     self.update.emit({"type": config_type, "success": True, "value": pulses})
                     self.update_event_log.emit(f"Set QSwitch burst pulses. It reads {pulses} now.")
 
-                elif config_type == "qswitch_reset_user_counter":
+                elif config_type == "reset_qswitch_user_counter":
                     self.update_event_log.emit(f"Resetting QSwitch user counter...")
                     self.yag.qswitch.user_counter_reset()
                     count = str(self.yag.qswitch.user_counter)
