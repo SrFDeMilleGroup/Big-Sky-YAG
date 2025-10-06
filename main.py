@@ -793,8 +793,8 @@ class mainWindow(qt.QMainWindow):
         ctrl_box.frame.addWidget(self.qswitch_burst_pulses_la, 4, 1)
         self.qswitch_burst_pulses_sb = widgets.NewSpinBox(range=(1, 999))
         self.qswitch_burst_pulses_sb.setValue(self.config.getint("setting", "qswitch_burst_pulses"))
-        # self.qswitch_burst_pulses_sb.valueChanged[int].connect(lambda val, config_type="qswitch_vurst_pulses": self.update_config(config_type, val))
-        self.qswitch_burst_pulses_sb.editingFinished.connect(lambda sb=self.qswitch_burst_pulses_sb, config_type="qswitch_vurst_pulses": self.update_config(config_type, sb.value()))
+        # self.qswitch_burst_pulses_sb.valueChanged[int].connect(lambda val, config_type="qswitch_burst_pulses": self.update_config(config_type, val))
+        self.qswitch_burst_pulses_sb.editingFinished.connect(lambda sb=self.qswitch_burst_pulses_sb, config_type="qswitch_burst_pulses": self.update_config(config_type, sb.value()))
         self.qswitch_burst_pulses_sb.setToolTip("Change QSwitch burst pulse number here.")
         ctrl_box.frame.addWidget(self.qswitch_burst_pulses_sb, 4, 2)
 
